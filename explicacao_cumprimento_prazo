@@ -1,0 +1,54 @@
+# 🚚 Análise do Cumprimento de Prazos de Entrega (E-Commerce)
+
+Este projeto realiza a análise de pontualidade na entrega de pedidos de e-commerce, calculando a proporção de entregas realizadas **no prazo** versus **com atraso** e gerando um gráfico de rosca (*donut chart*) customizado com identidade visual corporativa.
+
+---
+
+## 🎨 Resultado Visual
+
+> O gráfico gerado centraliza o volume total de pedidos analisados e exibe, diretamente nas fatias, a taxa de sucesso nas entregas.
+
+![Perfil de Entrega - No Prazo vs Atrasado](perfil_entrega_no_prazo_vs_atrasado.png)
+
+---
+
+## 🛠️ O que a Análise Faz
+
+1. **Validação de Dados:**
+   - Carrega a base de dados de pedidos `olist_orders_dataset.csv`.
+   - Valida a presença das colunas críticas de data de entrega (`order_delivered_customer_date`) e data estimada (`order_estimated_delivery_date`).
+2. **Tratamento e Regras de Negócio:**
+   - Filtra registros válidos (reforma pedidos sem datas de entrega confirmadas).
+   - Compara a **data real de entrega ao cliente** com a **data estimada**.
+   - Classifica cada pedido em:
+     - 🔹 **No prazo:** `data_entrega <= data_estimada`
+     - 🔹 **Com atraso:** `data_entrega > data_estimada`
+3. **Visualização Gráfica Customizada:**
+   - Gráfico de Rosca (*Donut Chart*) construído em **Matplotlib**.
+   - Rótulos internos com porcentagens e volumetria calculados via trigonometria.
+   - Destaque central com o total consolidado da amostra.
+
+---
+
+## 📊 Métricas da Análise
+
+| Categoria | Descrição |
+| :--- | :--- |
+| **No Prazo** | Entregas concluídas dentro ou antes da data limite estimada. |
+| **Com Atraso** | Entregas concluídas após a data limite prometida ao cliente. |
+| **Total Analisado** | Soma de todos os pedidos concluídos com registro de entrega válido. |
+
+---
+🧰 Tecnologias Utilizadas
+Python 3.x
+
+Pandas: Conversão de datas e manipulação de vetores condicionais.
+
+Matplotlib: Construção do gráfico de rosca e matemática de posicionamento dos rótulos.
+## 💻 Como Executar
+
+### Pré-requisitos
+Certifique-se de ter o Python instalado com as bibliotecas necessárias:
+
+```bash
+pip install pandas matplotlib
