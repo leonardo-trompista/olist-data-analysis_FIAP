@@ -1,0 +1,59 @@
+# 📊 Análise de Distribuição das Avaliações de Clientes (E-Commerce)
+
+Este projeto realiza a extração, processamento e visualização da distribuição de avaliações (*customer review scores*) de uma base de dados de e-commerce, gerando um relatório visual profissional e automatizado em alta resolução.
+
+---
+
+## 🎨 Resultado Visual
+
+> O gráfico gerado sintetiza a satisfação do cliente utilizando um sistema visual intuitivo baseado na escala de 1 a 5 estrelas.
+
+![Distribuição das Avaliações dos Clientes](distribuicao_avaliacoes_clientes_plotly.png)
+
+---
+
+## 🛠️ O que a Análise Faz
+
+1. **Validação e Tratamento de Dados:** 
+   - Carrega o dataset `olist_order_reviews_dataset.csv`.
+   - Filtra e limpa valores nulos ou fora da escala válida (1 a 5 estrelas).
+2. **Cálculo de Métricas Estatísticas:**
+   - **Distribuição Percentual:** Proporção exata de cada nota atribuída pelos clientes.
+   - **Tendência Central:** Cálculo da **Média** e **Mediana** das avaliações.
+   - **Agrupamento por Sentimento:**
+     - 🟢 **Positivas:** Notas 4 e 5 (Satisfação/Fidelização)
+     - 🟡 **Neutras:** Nota 3 (Pontos de atenção)
+     - 🔴 **Negativas:** Notas 1 e 2 (Detração/Insatisfação)
+3. **Renderização Gráfica Customizada:**
+   - Desenhada via código em Python usando trigonometria para renderizar cada estrela com efeito de brilho (*glow effect*) e iluminação proporcional à relevância da nota.
+
+---
+
+## 📐 Métricas Analisadas no Dataset
+
+* **Base Total:** 99.224 avaliações analisadas.
+* **Média Geral:** ~4,09 / 5,00
+* **Mediana:** 5 estrelas
+* **Satisfação Geral:**
+  * **Positivas (4-5 ★):** ~77% das avaliações.
+  * **Neutras (3 ★):** ~8% das avaliações.
+  * **Negativas (1-2 ★):** ~15% das avaliações.
+
+---
+
+🧰 Tecnologias Utilizadas
+Python 3.x
+
+Pandas: Manipulação e limpeza da base de dados.
+
+NumPy: Vetorização e cálculos trigonométricos para o desenho das formas geométricas.
+
+Matplotlib: Renderização gráfica personalizada e exportação em alta resolução (300 DPI).
+
+## 💻 Como Executar no Google Colab ou Localmente
+
+### Pré-requisitos
+Certifique-se de ter as seguintes bibliotecas instaladas em seu ambiente Python:
+
+```bash
+pip install pandas numpy matplotlib
