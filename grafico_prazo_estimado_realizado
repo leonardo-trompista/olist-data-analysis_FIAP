@@ -1,0 +1,212 @@
+# ============================================================
+# 4.1 EFICIÊNCIA LOGÍSTICA
+# PRAZO ESTIMADO × PRAZO REALIZADO
+#
+# Base:
+# olist_orders_dataset.csv
+#
+# Cálculos:
+# Prazo realizado = entrega - compra
+# Prazo estimado  = previsão - compra
+# ============================================================
+
+# 1. IMPORTAR BIBLIOTECAS
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 2. DEFINIR ARQUIVO
+nome_arquivo = "olist_orders_dataset.csv"
+
+# 3. VERIFICAR ARQUIVO
+if not os.path.exists(nome_arquivo):
+    raise FileNotFoundError(
+        f"O arquivo '{nome_arquivo}' não foi encontrado "
+        "no ambiente do Colab."
+    )
+
+print("Arquivo encontrado:")
+print(nome_arquivo)
+
+# 4. CARREGAR BASE
+df = pd.read_csv(nome_arquivo)
+
+print()
+print("Dimensões da base:")
+print(df.shape)
+
+# 5. VERIFICAR COLUNAS
+colunas_necessarias = [
+    "order_purchase_timestamp",
+    "order_delivered_customer_date",
+    "order_estimated_delivery_date"
+]
+
+for coluna in colunas_necessarias:
+    if coluna not in df.columns:
+        raise ValueError(
+            f"A coluna '{coluna}' não foi encontrada na base."
+        )
+
+# 6. CONVERTER DATAS
+for coluna in colunas_necessarias:
+    df[coluna] = pd.to_datetime(
+        df[coluna],
+        errors="coerce"
+    )
+
+# 7. REMOVER REGISTROS SEM DATAS
+df_eficiencia = df.dropna(
+    subset=colunas_necessarias
+).copy()
+
+print()
+print(
+    "Pedidos considerados na análise:",
+    f"{len(df_eficiencia):,}"
+)
+
+# 8. CALCULAR PRAZO REALIZADO (EM DIAS)
+df_eficiencia["prazo_realizado"] = (
+    df_eficiencia["order_delivered_customer_date"]
+    - df_eficiencia["order_purchase_timestamp"]
+).dt.total_seconds() / 86400
+
+# 9. CALCULAR PRAZO ESTIMADO (EM DIAS)
+df_eficiencia["prazo_estimado"] = (
+    df_eficiencia["order_estimated_delivery_date"]
+    - df_eficiencia["order_purchase_timestamp"]
+).dt.total_seconds() / 86400
+
+# 10. REMOVER POSSÍVEIS VALORES INVÁLIDOS
+df_eficiencia = df_eficiencia[
+    (df_eficiencia["prazo_realizado"] >= 0)
+    & (df_eficiencia["prazo_estimado"] >= 0)
+].copy()
+
+# 11. CALCULAR MÉDIAS
+media_realizado = df_eficiencia["prazo_realizado"].mean()
+media_estimado = df_eficiencia["prazo_estimado"].mean()
+
+# 12. DIFERENÇA MÉDIA
+diferenca_media = media_realizado - media_estimado
+
+# 13. PERCENTUAL DA DIFERENÇA
+percentual_diferenca = (diferenca_media / media_estimado) * 100
+
+# 14. EXIBIR RESULTADOS NO CONSOLE
+print()
+print("=" * 55)
+print("EFICIÊNCIA LOGÍSTICA")
+print("PRAZO ESTIMADO × PRAZO REALIZADO")
+print("=" * 55)
+print()
+print(f"Prazo estimado médio: {media_estimado:.2f} dias")
+print(f"Prazo realizado médio: {media_realizado:.2f} dias")
+print(f"Diferença média: {diferenca_media:.2f} dias")
+print(f"Diferença percentual: {percentual_diferenca:.2f}%")
+print()
+print(f"Pedidos analisados: {len(df_eficiencia):,}")
+print("=" * 55)
+
+# 15. CORES (PALETA FIAP)
+AZUL_FIAP = "#0066B3"
+MAGENTA_FIAP = "#E5007D"
+
+# 16. CRIAR GRÁFICO
+fig, ax = plt.subplots(figsize=(11, 7), facecolor="white")
+
+# 17. POSIÇÕES E DADOS DAS BARRAS
+posicoes = [0.00, 0.40]
+categorias = ["Prazo estimado", "Prazo realizado"]
+valores = [media_estimado, media_realizado]
+cores = [MAGENTA_FIAP, AZUL_FIAP]
+
+# 18. CRIAR BARRAS
+barras = ax.bar(
+    posicoes,
+    valores,
+    color=cores,
+    width=0.165
+)
+
+# 19. VALORES ACIMA DAS BARRAS
+for barra, valor in zip(barras, valores):
+    ax.text(
+        barra.get_x() + barra.get_width() / 2,
+        valor + 0.5,
+        f"{valor:.2f} dias",
+        ha="center",
+        va="bottom",
+        fontsize=13,
+        fontweight="bold",
+        color="#222222",
+        zorder=10
+    )
+
+# 20. RÓTULOS DO EIXO X
+ax.set_xticks(posicoes)
+ax.set_xticklabels(categorias, fontsize=11)
+
+# 21. TEXTO DA DIFERENÇA (SUBTÍTULO/DINÂMICO)
+texto_diferenca = (
+    f"Entrega realizada, em média, "
+    f"{abs(diferenca_media):.2f} dias "
+    f"{'antes' if diferenca_media < 0 else 'após'} "
+    f"o prazo estimado"
+)
+
+ax.text(
+    0.5,
+    0.93,
+    texto_diferenca,
+    transform=ax.transAxes,
+    ha="center",
+    va="center",
+    fontsize=13,
+    color="#555555"
+)
+
+# 22. TÍTULO
+ax.set_title(
+    "PRAZO ESTIMADO × PRAZO REALIZADO",
+    fontsize=20,
+    fontweight="bold",
+    color="#222222",
+    pad=20
+)
+
+# 23. ESTILIZAÇÃO E AJUSTES DO GRÁFICO
+ax.get_yaxis().set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.spines["left"].set_visible(False)
+ax.spines["bottom"].set_visible(False)
+
+ax.tick_params(axis="x", length=0, labelsize=11)
+
+maior_valor = max(valores)
+ax.set_ylim(0, maior_valor * 1.20)
+ax.set_xlim(-0.35, 0.75)
+
+plt.tight_layout()
+
+# 24. EXPORTAR PNG (EXECUTADO ANTES DO PLT.SHOW)
+nome_saida = "eficiencia_prazo_estimado_vs_realizado.png"
+fig.savefig(
+    nome_saida,
+    dpi=300,
+    bbox_inches="tight",
+    facecolor="white"
+)
+
+# 25. EXIBIR GRÁFICO NA TELA
+plt.show()
+
+# 26. CONFIRMAÇÃO NO CONSOLE
+print()
+print("=" * 55)
+print("GRÁFICO EXPORTADO COM SUCESSO")
+print("=" * 55)
+print()
+print(f"Arquivo: {nome_saida}")
