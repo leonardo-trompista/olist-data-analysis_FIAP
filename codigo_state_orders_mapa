@@ -1,0 +1,206 @@
+# ============================================================
+# MAPA — USANDO df_analise JÁ CARREGADO
+# ============================================================
+
+import requests
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+
+# Criar tabela por estado
+state_orders = (
+    df_analise
+    .groupby('customer_state')
+    .size()
+    .reset_index(name='total_orders')
+    .sort_values('total_orders', ascending=False)
+)
+
+# Cópia
+state_orders_mapa = state_orders.copy()
+
+# GO + DF
+pedidos_df = state_orders_mapa.loc[
+    state_orders_mapa['customer_state'] == 'DF',
+    'total_orders'
+].iloc[0]
+
+pedidos_go = state_orders_mapa.loc[
+    state_orders_mapa['customer_state'] == 'GO',
+    'total_orders'
+].iloc[0]
+
+novo_go = pedidos_go + pedidos_df
+
+# Remover DF
+state_orders_mapa = state_orders_mapa[
+    state_orders_mapa['customer_state'] != 'DF'
+].copy()
+
+# Atualizar GO
+state_orders_mapa.loc[
+    state_orders_mapa['customer_state'] == 'GO',
+    'total_orders'
+] = novo_go
+
+# Top 10
+top_states = (
+    state_orders_mapa
+    .sort_values('total_orders', ascending=False)
+    .head(10)
+    .copy()
+)
+
+print('TOP 10 REGIÕES LOGÍSTICAS:')
+print(
+    top_states[
+        ['customer_state', 'total_orders']
+    ].to_string(index=False)
+)
+
+# ============================================================
+# GEOJSON
+# ============================================================
+
+url_geojson = (
+    'https://raw.githubusercontent.com/codeforamerica/'
+    'click_that_hood/master/public/data/brazil-states.geojson'
+)
+
+geojson_brasil = requests.get(url_geojson).json()
+
+# ============================================================
+# MAPA
+# ============================================================
+
+fig = px.choropleth(
+    top_states,
+    geojson=geojson_brasil,
+    locations='customer_state',
+    featureidkey='properties.sigla',
+    color='total_orders',
+
+    color_continuous_scale=[
+        [0.00, '#1A1A1A'],
+        [0.20, '#3A1608'],
+        [0.40, '#6B2600'],
+        [0.60, '#A83B00'],
+        [0.80, '#E94B00'],
+        [1.00, '#FF5A00']
+    ],
+
+    scope='south america',
+
+    hover_name='customer_state',
+
+    hover_data={
+        'customer_state': False,
+        'total_orders': ':,'
+    },
+
+    labels={
+        'total_orders': 'Pedidos'
+    }
+)
+
+# ============================================================
+# COORDENADAS
+# ============================================================
+
+coordenadas = {
+    'SP': (-22.5, -48.5),
+    'RJ': (-22.6, -43.2),
+    'MG': (-18.5, -44.5),
+    'RS': (-30.2, -52.0),
+    'PR': (-24.8, -51.8),
+    'SC': (-27.1, -50.2),
+    'BA': (-12.5, -41.5),
+    'GO': (-15.8, -49.6),
+    'PE': (-8.3, -37.5),
+    'ES': (-19.6, -40.5),
+    'CE': (-5.2, -39.5),
+    'PA': (-3.8, -52.0),
+    'MT': (-13.0, -56.0),
+    'MA': (-5.0, -45.0),
+    'MS': (-20.5, -54.5)
+}
+
+# ============================================================
+# VALORES NO MAPA
+# ============================================================
+
+for _, row in top_states.iterrows():
+
+    estado = row['customer_state']
+    valor = row['total_orders']
+
+    if estado not in coordenadas:
+        continue
+
+    lat, lon = coordenadas[estado]
+
+    fig.add_trace(
+        go.Scattergeo(
+            lat=[lat],
+            lon=[lon],
+
+            text=[
+                f'<b>{estado}</b><br>'
+                f'{valor:,.0f}'.replace(',', '.')
+            ],
+
+            mode='text',
+
+            textfont=dict(
+                color='white',
+                size=12
+            ),
+
+            showlegend=False,
+            hoverinfo='skip'
+        )
+    )
+
+# ============================================================
+# FUNDO BRANCO
+# ============================================================
+
+fig.update_geos(
+    fitbounds='locations',
+    visible=False,
+    bgcolor='white'
+)
+
+fig.update_layout(
+    paper_bgcolor='white',
+    plot_bgcolor='white',
+
+    font=dict(
+        color='black'
+    ),
+
+    title={
+        'text': 'Top 10 Regiões com Maior Volume de Pedidos',
+        'x': 0.5,
+        'xanchor': 'center',
+
+        'font': {
+            'size': 24,
+            'color': 'black'
+        }
+    },
+
+    margin=dict(
+        l=20,
+        r=20,
+        t=80,
+        b=20
+    )
+)
+
+# Remover colorbar
+fig.update_coloraxes(
+    showscale=False
+)
+
+fig.show()
