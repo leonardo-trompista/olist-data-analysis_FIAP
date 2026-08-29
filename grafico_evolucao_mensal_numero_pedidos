@@ -1,0 +1,287 @@
+# ============================================================
+# 3.2 - EVOLUÇÃO MENSAL DO NÚMERO DE PEDIDOS
+# ============================================================
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from google.colab import files
+import os
+import io
+
+# ============================================================
+# 1. CARREGAR ARQUIVO
+# ============================================================
+
+print("Selecione a base de pedidos da Olist (.csv ou .xlsx):")
+
+uploaded = files.upload()
+
+nome_arquivo = next(iter(uploaded))
+
+print(f"\nArquivo carregado: {nome_arquivo}")
+
+# ============================================================
+# 2. IDENTIFICAR O FORMATO DO ARQUIVO
+# ============================================================
+
+extensao = os.path.splitext(nome_arquivo)[1].lower()
+
+if extensao == ".csv":
+
+    df = pd.read_csv(
+        io.BytesIO(uploaded[nome_arquivo]),
+        encoding="utf-8"
+    )
+
+elif extensao in [".xlsx", ".xls"]:
+
+    df = pd.read_excel(
+        io.BytesIO(uploaded[nome_arquivo])
+    )
+
+else:
+
+    raise ValueError(
+        "Formato não suportado. "
+        "Carregue um arquivo CSV ou Excel."
+    )
+
+# ============================================================
+# 3. VERIFICAÇÃO DA BASE
+# ============================================================
+
+print("\nArquivo carregado com sucesso!")
+print(f"Quantidade de registros: {len(df):,}")
+print(f"Quantidade de colunas: {df.shape[1]}")
+
+# ============================================================
+# 4. VERIFICAR COLUNA DE DATA
+# ============================================================
+
+coluna_data = "order_purchase_timestamp"
+
+if coluna_data not in df.columns:
+
+    raise ValueError(
+        f"\nA coluna '{coluna_data}' não foi encontrada.\n\n"
+        "Colunas disponíveis:\n"
+        + "\n".join(df.columns.astype(str))
+    )
+
+print(f"\nColuna '{coluna_data}' encontrada com sucesso!")
+
+# ============================================================
+# 5. CONVERTER DATA
+# ============================================================
+
+df[coluna_data] = pd.to_datetime(
+    df[coluna_data],
+    errors="coerce"
+)
+
+# Remover registros sem data válida
+df = df.dropna(subset=[coluna_data])
+
+# ============================================================
+# 6. CRIAR PERÍODO MENSAL
+# ============================================================
+
+df["mes"] = df[coluna_data].dt.to_period("M")
+
+# ============================================================
+# 7. CALCULAR PEDIDOS POR MÊS
+# ============================================================
+
+pedidos_mes = (
+    df.groupby("mes")
+      .size()
+      .reset_index(name="pedidos")
+)
+
+# Converter período para data
+pedidos_mes["mes"] = pedidos_mes["mes"].dt.to_timestamp()
+
+# ============================================================
+# 8. EXIBIR TABELA
+# ============================================================
+
+print("\nPedidos por mês:")
+
+display(pedidos_mes)
+
+# ============================================================
+# 9. ESTATÍSTICAS
+# ============================================================
+
+maior_mes = pedidos_mes.loc[
+    pedidos_mes["pedidos"].idxmax()
+]
+
+menor_mes = pedidos_mes.loc[
+    pedidos_mes["pedidos"].idxmin()
+]
+
+media_mensal = pedidos_mes["pedidos"].mean()
+
+print("\n========== RESUMO ==========")
+
+print(
+    f"Média mensal: "
+    f"{media_mensal:,.0f} pedidos"
+)
+
+print(
+    f"Maior volume: "
+    f"{maior_mes['pedidos']:,} pedidos "
+    f"({maior_mes['mes'].strftime('%m/%Y')})"
+)
+
+print(
+    f"Menor volume: "
+    f"{menor_mes['pedidos']:,} pedidos "
+    f"({menor_mes['mes'].strftime('%m/%Y')})"
+)
+
+# ============================================================
+# 10. GRÁFICO
+# ============================================================
+
+fig, ax = plt.subplots(figsize=(14, 6))
+
+# ------------------------------------------------------------
+# Linha principal
+# ------------------------------------------------------------
+
+ax.plot(
+    pedidos_mes["mes"],
+    pedidos_mes["pedidos"],
+    marker="o",
+    linewidth=2
+)
+
+# ------------------------------------------------------------
+# Identificar o mês com maior volume
+# ------------------------------------------------------------
+
+data_maior = maior_mes["mes"]
+valor_maior = maior_mes["pedidos"]
+
+# ------------------------------------------------------------
+# Destacar o ponto de maior volume
+# ------------------------------------------------------------
+
+ax.scatter(
+    data_maior,
+    valor_maior,
+    s=100,
+    zorder=5
+)
+
+# ------------------------------------------------------------
+# Linha vertical no mês do pico
+# ------------------------------------------------------------
+
+ax.axvline(
+    x=data_maior,
+    linestyle="--",
+    linewidth=1.2,
+    alpha=0.7
+)
+
+# ------------------------------------------------------------
+# Anotação do pico
+# ------------------------------------------------------------
+
+ax.annotate(
+    f"{valor_maior:,.0f} pedidos",
+
+    xy=(data_maior, valor_maior),
+
+    xytext=(-140, 0),
+    textcoords="offset points",
+
+    ha="left",
+    va="center",
+
+    fontsize=11,
+    fontweight="bold",
+
+    arrowprops=dict(
+        arrowstyle="->",
+        linewidth=1
+    )
+)
+
+# ============================================================
+# 11. TÍTULO
+# ============================================================
+
+ax.set_title(
+    "Evolução Mensal do Número de Pedidos",
+    fontsize=18,
+    fontweight="bold"
+)
+
+# ============================================================
+# 12. EIXOS
+# ============================================================
+
+ax.set_xlabel(
+    "Mês/Ano",
+    fontsize=15,
+    fontweight="bold"
+)
+
+ax.set_ylabel(
+    "Quantidade de Pedidos",
+    fontsize=15,
+    fontweight="bold"
+)
+
+# ============================================================
+# 13. REMOVER GRID
+# ============================================================
+
+ax.grid(False)
+
+# ============================================================
+# 14. REMOVER BORDAS
+# ============================================================
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.spines["left"].set_visible(False)
+
+# Manter somente a base
+ax.spines["bottom"].set_visible(True)
+
+# ============================================================
+# 15. CONFIGURAR EIXO Y
+# ============================================================
+
+ax.tick_params(
+    axis="y",
+    labelsize=12,
+    length=0
+)
+
+# ============================================================
+# 16. CONFIGURAR EIXO X
+# ============================================================
+
+ax.set_xticks(pedidos_mes["mes"])
+
+ax.set_xticklabels(
+    pedidos_mes["mes"].dt.strftime("%m/%Y"),
+    rotation=45,
+    ha="right",
+    fontsize=11
+)
+
+# ============================================================
+# 17. AJUSTAR LAYOUT E EXIBIR
+# ============================================================
+
+plt.tight_layout()
+
+plt.show()
