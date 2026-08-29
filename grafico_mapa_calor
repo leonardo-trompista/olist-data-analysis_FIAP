@@ -1,0 +1,412 @@
+# @title
+# ============================================================
+# MAPA + BARRAS — VERSÃO AJUSTADA E CORRIGIDA
+# ============================================================
+
+import requests
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+
+# ============================================================
+# 1. PALETA ORIGINAL
+# ============================================================
+
+paleta = [
+    '#1A1A1A',
+    '#3A1608',
+    '#6B2600',
+    '#A83B00',
+    '#E94B00',
+    '#FF5A00'
+]
+
+
+# ============================================================
+# 2. TOP 10
+# ============================================================
+
+top_states = (
+    state_orders_mapa
+    .sort_values(
+        'total_orders',
+        ascending=False
+    )
+    .head(10)
+    .copy()
+)
+
+
+# ============================================================
+# 3. CALCULAR CORES
+# ============================================================
+
+min_valor = top_states['total_orders'].min()
+max_valor = top_states['total_orders'].max()
+
+
+def obter_cor(valor):
+
+    if max_valor == min_valor:
+        posicao = 1
+
+    else:
+        posicao = (
+            valor - min_valor
+        ) / (
+            max_valor - min_valor
+        )
+
+    indice = round(
+        posicao * (len(paleta) - 1)
+    )
+
+    return paleta[indice]
+
+
+top_states['cor'] = (
+    top_states['total_orders']
+    .apply(obter_cor)
+)
+
+
+# ============================================================
+# 4. GEOJSON
+# ============================================================
+
+url_geojson = (
+    'https://raw.githubusercontent.com/codeforamerica/'
+    'click_that_hood/master/public/data/brazil-states.geojson'
+)
+
+geojson_brasil = requests.get(
+    url_geojson
+).json()
+
+
+# ============================================================
+# 5. CRIAR FIGURA MANUALMENTE
+# ============================================================
+
+fig = go.Figure()
+
+
+# ============================================================
+# 6. MAPA
+# ============================================================
+
+for _, row in top_states.iterrows():
+
+    estado = row['customer_state']
+    valor = row['total_orders']
+    cor = row['cor']
+
+    fig.add_trace(
+
+        go.Choropleth(
+
+            geojson=geojson_brasil,
+
+            locations=[estado],
+
+            z=[1],
+
+            featureidkey='properties.sigla',
+
+            colorscale=[
+                [0, cor],
+                [1, cor]
+            ],
+
+            showscale=False,
+
+            marker_line_color='white',
+
+            marker_line_width=0.7,
+
+            geo='geo',
+
+            hovertemplate=(
+                f'<b>{estado}</b><br>'
+                f'Pedidos: {valor:,.0f}'
+                '<extra></extra>'
+            )
+        )
+    )
+
+
+# ============================================================
+# 7. COORDENADAS DAS SIGLAS
+# ============================================================
+
+coordenadas = {
+
+    'SP': (-22.5, -48.5),
+    'RJ': (-22.6, -43.2),
+    'MG': (-18.5, -44.5),
+    'RS': (-30.2, -52.0),
+    'PR': (-24.8, -51.8),
+    'SC': (-27.1, -50.2),
+    'BA': (-12.5, -41.5),
+    'GO': (-15.8, -49.6),
+    'PE': (-8.3, -37.5),
+    'ES': (-19.6, -40.5),
+    'CE': (-5.2, -39.5),
+    'PA': (-3.8, -52.0),
+    'MT': (-13.0, -56.0),
+    'MA': (-5.0, -45.0),
+    'MS': (-20.5, -54.5)
+
+}
+
+
+# ============================================================
+# 8. SIGLAS DOS ESTADOS
+# ============================================================
+
+for _, row in top_states.iterrows():
+
+    estado = row['customer_state']
+
+    if estado not in coordenadas:
+        continue
+
+    lat, lon = coordenadas[estado]
+
+    fig.add_trace(
+
+        go.Scattergeo(
+
+            lat=[lat],
+
+            lon=[lon],
+
+            text=[f'<b>{estado}</b>'],
+
+            mode='text',
+
+            textfont=dict(
+
+                color='white',
+
+                size=14
+
+            ),
+
+            geo='geo',
+
+            showlegend=False,
+
+            hoverinfo='skip'
+
+        )
+    )
+
+
+# ============================================================
+# 9. GRÁFICO DE BARRAS
+# ============================================================
+
+barras = (
+    top_states
+    .sort_values(
+        'total_orders',
+        ascending=True
+    )
+)
+
+
+fig.add_trace(
+
+    go.Bar(
+
+        x=barras['total_orders'],
+
+        y=barras['customer_state'],
+
+        orientation='h',
+
+        marker=dict(
+
+            color=barras['cor'].tolist()
+
+        ),
+
+        text=[
+
+            f'{valor:,.0f}'.replace(',', '.')
+
+            for valor
+            in barras['total_orders']
+
+        ],
+
+        textposition='outside',
+
+        textfont=dict(
+
+            color='black',
+
+            size=14
+
+        ),
+
+        xaxis='x',
+
+        yaxis='y',
+
+        hovertemplate=(
+
+            '<b>%{y}</b><br>'
+            'Pedidos: %{x:,.0f}'
+            '<extra></extra>'
+
+        )
+
+    )
+)
+
+
+# ============================================================
+# ÁREA DO MAPA
+# ============================================================
+
+fig.update_geos(
+
+    visible=False,
+
+    bgcolor='white',
+
+    domain=dict(
+        x=[0.00, 0.76],
+        y=[0.00, 1.00]
+    ),
+
+    projection_type='mercator',
+
+    projection_scale=1.15,
+
+    center=dict(
+        lat=-17,
+        lon=-48
+    )
+)
+
+
+# ============================================================
+# EIXO X — OCULTO E TRAVADO
+# ============================================================
+
+fig.update_xaxes(
+
+    domain=[0.72, 0.98],
+
+    visible=False,
+
+    showticklabels=False,
+
+    showgrid=False,
+
+    zeroline=False,
+
+    fixedrange=True  # << CONGELA O EIXO X PARA O SCROLL ATUAR NO MAPA
+)
+
+
+# ============================================================
+# EIXO Y — SIGLAS DOS ESTADOS E TRAVADO
+# ============================================================
+
+fig.update_yaxes(
+
+    domain=[0.00, 1.00],
+
+    visible=True,
+
+    showticklabels=True,
+
+    tickmode='array',
+
+    tickvals=list(range(len(barras))),
+
+    ticktext=barras['customer_state'].tolist(),
+
+    tickfont=dict(
+        size=12,
+        color='black'
+    ),
+
+    ticklabelposition='outside',
+
+    ticklabelstandoff=20,
+
+    showgrid=False,
+
+    showline=False,
+
+    zeroline=False,
+
+    automargin=True,
+
+    fixedrange=True  # << CONGELA O EIXO Y PARA O SCROLL ATUAR NO MAPA
+)
+
+
+# ============================================================
+# 12. CONFIGURAÇÃO FINAL
+# ============================================================
+
+fig.update_layout(
+
+    dragmode='pan',  # << HABILITA A FERRAMENTA DE ZOOM/ARRASTE NO MAPA
+
+    paper_bgcolor='white',
+
+    plot_bgcolor='white',
+
+    showlegend=False,
+
+    title=dict(
+
+        text='Top 10 Regiões com Maior Volume de Pedidos',
+
+        x=0.5,
+
+        xanchor='center',
+
+        font=dict(
+
+            size=24,
+
+            color='black'
+
+        )
+
+    ),
+
+    height=800,
+
+    margin=dict(
+
+        l=20,
+
+        r=40,
+
+        t=80,
+
+        b=20
+
+    )
+
+)
+
+
+# ============================================================
+# 13. EXIBIR
+# ============================================================
+
+fig.show(
+    config={
+        'scrollZoom': True
+    }
+)
