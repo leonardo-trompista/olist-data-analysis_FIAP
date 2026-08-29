@@ -1,0 +1,30 @@
+## 📊 Análise Geográfica e Logística de Pedidos (Top 10 Regiões)
+
+Esta etapa do projeto realiza o tratamento dos dados de vendas por estado e gera um painel interativo combinado (**Choropleth Map + Horizontal Bar Chart**) para visualização dos principais polos de consumo.
+
+### 🛠️ Principais Etapas do Pipeline
+
+1. **Tratamento e Agrupamento Logístico:**
+   - Consolidação do volume de pedidos agrupados por `customer_state`.
+   - **Regra de Negócio:** Incorporação dos pedidos do Distrito Federal (`DF`) ao estado de Goiás (`GO`), unificando o polo logístico da região Centro-Oeste.
+   - Filtragem dinâmica para isolar os 10 maiores volumes regionais.
+
+2. **Engenharia de Cores e Gradientes:**
+   - Mapeamento dinâmico dos volumes para uma paleta visual personalizada de alto contraste (tons escuros a alaranjados vibrantes).
+
+3. **Renderização Visual Combinada (Plotly & GeoJSON):**
+   - Cruzamento dos dados tratados com a malha geoespacial do Brasil via GeoJSON (`click_that_hood`).
+   - Plotagem simultânea do **Mapa Coroplético** e do **Gráfico de Barras de Apoio** no mesmo Canvas.
+   - Anotação das siglas dos estados via coordenadas geográficas (`Scattergeo`).
+
+4. **Otimização de UX/UI:**
+   - Travamento dos eixos cartesianos (`fixedrange=True`) para garantir navegação fluida por *scroll/pan* no mapa sem interferência no layout de barras.
+
+---
+
+### 💻 Como Executar
+
+Certifique-se de ter o dataset `df_analise` carregado e as bibliotecas instaladas:
+
+```bash
+pip install pandas plotly requests
