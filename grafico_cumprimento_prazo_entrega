@@ -1,0 +1,238 @@
+# ============================================================
+# 3.5 PERFIL DE ENTREGA
+# CUMPRIMENTO DO PRAZO DE ENTREGA
+#
+# Classificação:
+# - No prazo
+# - Com atraso
+#
+# Base:
+# olist_orders_dataset.csv
+# ============================================================
+
+# 1. IMPORTAR BIBLIOTECAS
+import os
+import math
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 2. DEFINIR ARQUIVO
+nome_arquivo = "olist_orders_dataset.csv"
+
+# 3. VERIFICAR ARQUIVO
+if not os.path.exists(nome_arquivo):
+    raise FileNotFoundError(
+        f"O arquivo '{nome_arquivo}' não foi encontrado "
+        "no ambiente do Colab."
+    )
+
+print("Arquivo encontrado:")
+print(nome_arquivo)
+
+# 4. CARREGAR BASE
+df = pd.read_csv(nome_arquivo)
+
+print()
+print("Dimensões da base:")
+print(df.shape)
+
+# 5. VERIFICAR COLUNAS NECESSÁRIAS
+colunas_necessarias = [
+    "order_delivered_customer_date",
+    "order_estimated_delivery_date"
+]
+
+for coluna in colunas_necessarias:
+    if coluna not in df.columns:
+        raise ValueError(
+            f"A coluna '{coluna}' não foi encontrada na base."
+        )
+
+# 6. CONVERTER DATAS
+df["order_delivered_customer_date"] = pd.to_datetime(
+    df["order_delivered_customer_date"],
+    errors="coerce"
+)
+
+df["order_estimated_delivery_date"] = pd.to_datetime(
+    df["order_estimated_delivery_date"],
+    errors="coerce"
+)
+
+# 7. REMOVER PEDIDOS SEM DATA NECESSÁRIA
+df_entrega = df.dropna(
+    subset=[
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+    ]
+).copy()
+
+print()
+print(
+    "Pedidos considerados na análise:",
+    f"{len(df_entrega):,}"
+)
+
+# 8. CLASSIFICAR ENTREGAS
+df_entrega["status_entrega"] = (
+    df_entrega["order_delivered_customer_date"]
+    <= df_entrega["order_estimated_delivery_date"]
+).map({
+    True: "No prazo",
+    False: "Com atraso"
+})
+
+# 9. CONTAGEM
+contagem = (
+    df_entrega["status_entrega"]
+    .value_counts()
+    .reindex(
+        ["No prazo", "Com atraso"],
+        fill_value=0
+    )
+)
+
+# 10. PERCENTUAIS
+total_pedidos = contagem.sum()
+percentual = (contagem / total_pedidos * 100)
+
+# 11. EXIBIR RESULTADOS NO CONSOLE
+print()
+print("============================================")
+print("PERFIL DE ENTREGA")
+print("============================================")
+print()
+
+for categoria in contagem.index:
+    print(
+        f"{categoria}: "
+        f"{contagem[categoria]:,} "
+        f"({percentual[categoria]:.2f}%)"
+    )
+
+print()
+print(f"Total analisado: {total_pedidos:,}")
+
+# 12. CORES — PALETA
+AZUL_FIAP = "#0066B3"
+MAGENTA_FIAP = "#E5007D"
+
+# 13. CRIAR FIGURA
+fig, ax = plt.subplots(figsize=(12, 8), facecolor="white")
+
+# 14. DADOS DO GRÁFICO
+labels = ["No prazo", "Com atraso"]
+values = [contagem["No prazo"], contagem["Com atraso"]]
+colors = [AZUL_FIAP, MAGENTA_FIAP]
+
+# 15. CRIAR ROSCA
+wedges, _ = ax.pie(
+    values,
+    colors=colors,
+    startangle=90,
+    counterclock=False,
+    wedgeprops=dict(
+        width=0.42,
+        edgecolor="white",
+        linewidth=3
+    )
+)
+
+# 16. INSERIR INFORMAÇÕES NAS FATIAS
+total = sum(values)
+
+for wedge, label, value in zip(wedges, labels, values):
+    angulo = (wedge.theta1 + wedge.theta2) / 2
+    angulo_rad = math.radians(angulo)
+
+    raio_texto = 0.79
+    x = raio_texto * math.cos(angulo_rad)
+    y = raio_texto * math.sin(angulo_rad)
+
+    pct = (value / total * 100)
+    texto = f"{pct:.2f}%\n{value:,}"
+
+    ax.text(
+        x,
+        y,
+        texto,
+        ha="center",
+        va="center",
+        color="white",
+        fontsize=12,
+        fontweight="bold",
+        family="DejaVu Sans",
+        linespacing=1.25
+    )
+
+# 17. TEXTO CENTRAL
+ax.text(
+    0,
+    0.04,
+    f"{total_pedidos:,}",
+    ha="center",
+    va="center",
+    fontsize=18,
+    fontweight="bold",
+    color="#222222",
+    family="DejaVu Sans"
+)
+
+ax.text(
+    0,
+    -0.09,
+    "pedidos analisados",
+    ha="center",
+    va="center",
+    fontsize=9,
+    color="#333333",
+    family="DejaVu Sans"
+)
+
+# 18. TÍTULO
+ax.set_title(
+    "CUMPRIMENTO DO PRAZO DE ENTREGA",
+    fontsize=18,
+    fontweight="bold",
+    color="#222222",
+    pad=25,
+    family="DejaVu Sans"
+)
+
+# 19. LEGENDA
+ax.legend(
+    wedges,
+    labels,
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.06),
+    ncol=2,
+    frameon=False,
+    fontsize=11
+)
+
+# 20. AJUSTES FINAIS
+ax.set_aspect("equal")
+ax.axis("off")
+plt.tight_layout()
+
+# ============================================================
+# 21. EXPORTAR PNG (EXCUTA ANTES DO PLT.SHOW PARA EVITAR IMAGEM EM BRANCO)
+# ============================================================
+nome_saida = "perfil_entrega_no_prazo_vs_atrasado.png"
+
+fig.savefig(
+    nome_saida,
+    dpi=300,
+    bbox_inches="tight",
+    facecolor="white"
+)
+
+# 22. EXIBIR
+plt.show()
+
+print()
+print("============================================")
+print("GRÁFICO EXPORTADO COM SUCESSO")
+print("============================================")
+print()
+print(f"Arquivo: {nome_saida}")
