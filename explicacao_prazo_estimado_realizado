@@ -1,0 +1,55 @@
+# ⏱️ Eficiência Logística: Prazo Estimado vs. Prazo Realizado
+
+Este script realiza uma análise comparativa da eficiência logística em operações de e-commerce, medindo a diferença entre o tempo prometido ao cliente (**prazo estimado**) e o tempo efetivo de entrega (**prazo realizado**).
+
+---
+
+## 🎨 Resultado Visual
+
+> O gráfico compara visualmente a média em dias de cada etapa e calcula dinamicamente a antecipação ou atraso médio das entregas.
+
+![Eficiência Logística - Prazo Estimado vs Realizado](eficiencia_prazo_estimado_vs_realizado.png)
+
+---
+
+## 📐 Métricas e Regras de Cálculo
+
+Os prazos são convertidos em **dias corridos com precisão decimal** a partir dos carimbos de data/hora (*timestamps*):
+
+$$\text{Prazo Realizado (dias)} = \frac{\text{Data de Entrega} - \text{Data de Compra}}{86.400\text{ s}}$$
+
+$$\text{Prazo Estimado (dias)} = \frac{\text{Data de Previsão} - \text{Data de Compra}}{86.400\text{ s}}$$
+
+* **Diferença Média:** $\text{Média Realizado} - \text{Média Estimado}$
+* **Diferença Percentual:** $\left( \frac{\text{Diferença Média}}{\text{Média Estimado}} \right) \times 100$
+
+---
+
+## 🛠️ O que o Script Faz
+
+1. **Validação do Dataset:**
+   - Carrega a base `olist_orders_dataset.csv`.
+   - Verifica a presença das colunas críticas: `order_purchase_timestamp`, `order_delivered_customer_date` e `order_estimated_delivery_date`.
+2. **Tratamento de Dados:**
+   - Converte os textos para formatos de data nativos (`datetime`).
+   - Descarta registros incompletos (pedidos não entregues ou cancelados).
+   - Filtra inconsistências temporais (dias negativos).
+3. **Visualização Gráfica:**
+   - Gráfico de barras minimalista com **estilização corporativa (Paleta FIAP)**.
+   - Subtítulo dinâmico que adapta o texto indicando se as entregas foram realizadas **antes** ou **após** a estimativa.
+   - Remoção de bordas e eixos desnecessários (*chart junk*) para maior clareza visual.
+
+---
+🧰 Tecnologias Utilizadas
+Python 3.x
+
+Pandas: Conversão temporal e cálculos agregados de média.
+
+Matplotlib: Construção e exportação da visualização minimalista.
+## 💻 Como Executar
+
+### Pré-requisitos
+Certifique-se de ter o ambiente Python configurado com os pacotes:
+
+```bash
+pip install pandas matplotlib
