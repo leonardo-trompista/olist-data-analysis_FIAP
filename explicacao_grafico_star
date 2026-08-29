@@ -1,0 +1,288 @@
+# Relação entre Logística e Satisfação do Cliente — Olist
+
+## 📊 Atraso na Entrega × Nota do Cliente
+
+Este projeto analisa a relação entre o **cumprimento do prazo de entrega** e a **avaliação atribuída pelos clientes** na plataforma de e-commerce Olist.
+
+O objetivo é verificar se pedidos entregues com atraso apresentam uma distribuição de avaliações diferente daqueles entregues dentro do prazo.
+
+---
+
+## 🎯 Objetivo
+
+Avaliar se o desempenho logístico possui relação com a satisfação dos clientes, utilizando como indicadores:
+
+* Cumprimento ou atraso da entrega;
+* Nota atribuída pelo cliente;
+* Distribuição das avaliações de 1 a 5 estrelas.
+
+As avaliações foram agrupadas em três categorias:
+
+| Grupo        | Classificação                        |
+| ------------ | ------------------------------------ |
+| ⭐⭐⭐⭐⭐ / ⭐⭐⭐⭐ | Avaliação positiva — 4 e 5 estrelas  |
+| ⭐⭐⭐          | Avaliação intermediária — 3 estrelas |
+| ⭐⭐ / ⭐       | Avaliação negativa — 1 e 2 estrelas  |
+
+---
+
+## 🗂️ Bases utilizadas
+
+A análise utiliza duas bases do dataset público da Olist:
+
+### `olist_orders_dataset.csv`
+
+Utilizada para identificar:
+
+* `order_id`
+* `order_delivered_customer_date`
+* `order_estimated_delivery_date`
+
+### `olist_order_reviews_dataset.csv`
+
+Utilizada para obter:
+
+* `order_id`
+* `review_score`
+
+As duas bases são relacionadas por meio da coluna `order_id`.
+
+---
+
+## 🔄 Metodologia
+
+### 1. Carregamento dos dados
+
+Os arquivos CSV são carregados utilizando a biblioteca Pandas.
+
+O arquivo de avaliações utiliza uma leitura mais tolerante:
+
+```python
+pd.read_csv(
+    arquivo_avaliacoes,
+    engine="python",
+    on_bad_lines="warn"
+)
+```
+
+Essa configuração permite lidar com eventuais linhas malformadas no arquivo CSV, emitindo um aviso em vez de interromper completamente a execução.
+
+---
+
+### 2. Tratamento das datas
+
+As datas de entrega são convertidas para o formato `datetime`:
+
+```python
+pd.to_datetime()
+```
+
+São utilizadas as seguintes informações:
+
+* Data efetiva de entrega ao cliente;
+* Data estimada de entrega.
+
+Pedidos sem essas duas informações são removidos da análise.
+
+---
+
+### 3. Classificação da entrega
+
+Cada pedido é classificado comparando a data efetiva de entrega com a data estimada.
+
+A regra utilizada é:
+
+```text
+Data de entrega <= Data estimada
+→ No prazo
+
+Data de entrega > Data estimada
+→ Com atraso
+```
+
+Essa classificação é armazenada na variável:
+
+```python
+status_entrega
+```
+
+---
+
+### 4. Tratamento das avaliações
+
+As notas dos clientes são convertidas para valores numéricos.
+
+Somente avaliações de:
+
+```text
+1, 2, 3, 4 e 5 estrelas
+```
+
+são consideradas.
+
+---
+
+### 5. Integração das bases
+
+As informações de pedidos e avaliações são combinadas utilizando um `merge`:
+
+```python
+pd.merge(
+    df_pedidos,
+    df_avaliacoes,
+    on="order_id",
+    how="inner"
+)
+```
+
+Dessa forma, a análise considera somente pedidos que possuem tanto informações de entrega quanto avaliação do cliente.
+
+---
+
+## 📈 Agrupamento das avaliações
+
+Após a integração das bases, as avaliações são agrupadas em três categorias:
+
+### Avaliações positivas
+
+```text
+4 + 5 estrelas
+```
+
+Representam clientes com avaliação favorável.
+
+### Avaliações intermediárias
+
+```text
+3 estrelas
+```
+
+Representam avaliações neutras ou intermediárias.
+
+### Avaliações negativas
+
+```text
+1 + 2 estrelas
+```
+
+Representam clientes com avaliação desfavorável.
+
+---
+
+## 📊 Visualização
+
+O resultado é apresentado em um gráfico de barras empilhadas com 100% da distribuição das avaliações.
+
+Cada barra representa uma situação:
+
+* **No prazo**
+* **Com atraso**
+
+Os segmentos possuem cores diferentes:
+
+* 🔵 Azul-claro: 4–5 estrelas;
+* 🟠 Laranja: 3 estrelas;
+* 🔴 Vermelho: 1–2 estrelas.
+
+As cores são propositalmente suaves para facilitar a leitura do gráfico.
+
+As estrelas utilizadas na visualização possuem preenchimento amarelo e contorno preto para aumentar a visibilidade.
+
+---
+
+## 🧮 Indicador utilizado
+
+Para cada situação de entrega, é calculado o percentual de cada grupo de avaliação.
+
+Por exemplo:
+
+```text
+No prazo
+→ 4–5 estrelas
+→ 3 estrelas
+→ 1–2 estrelas
+
+Com atraso
+→ 4–5 estrelas
+→ 3 estrelas
+→ 1–2 estrelas
+```
+
+Os percentuais são calculados dentro de cada grupo de entrega, permitindo comparar a distribuição das avaliações entre pedidos no prazo e pedidos atrasados.
+
+---
+
+## 💡 Interpretação
+
+A análise permite verificar se existe uma associação entre desempenho logístico e satisfação.
+
+Um dos principais pontos observados é que pedidos entregues dentro do prazo apresentam uma proporção maior de avaliações positivas, enquanto pedidos atrasados apresentam maior participação de avaliações negativas.
+
+Isso indica que o cumprimento do prazo de entrega pode estar relacionado à percepção de qualidade do serviço pelo cliente.
+
+É importante destacar que essa análise demonstra **associação**, e não necessariamente causalidade. Outros fatores também podem influenciar a avaliação do cliente, como qualidade do produto, atendimento, preço, experiência de compra e problemas relacionados ao pedido.
+
+---
+
+## 🛠️ Tecnologias utilizadas
+
+* Python
+* Pandas
+* NumPy
+* Matplotlib
+* Google Colab
+* GitHub
+
+---
+
+## 📁 Estrutura sugerida do projeto
+
+```text
+olist-logistica-satisfacao/
+│
+├── README.md
+│
+├── notebooks/
+│   └── 5_1_atraso_vs_nota_cliente.ipynb
+│
+├── data/
+│   ├── olist_orders_dataset.csv
+│   └── olist_order_reviews_dataset.csv
+│
+├── outputs/
+│   └── 5_1_atraso_vs_nota_cliente.png
+│
+└── requirements.txt
+```
+
+### ⚠️ Observação sobre os dados
+
+Dependendo das regras de distribuição/licenciamento e do tamanho dos arquivos, pode ser mais adequado **não enviar os CSVs diretamente para o GitHub**.
+
+Nesse caso, mantenha apenas a referência às bases utilizadas e disponibilize o código para que o usuário possa obter os dados separadamente.
+
+---
+
+## 📌 Resultado
+
+O gráfico final permite comparar visualmente a distribuição das avaliações entre pedidos entregues no prazo e pedidos entregues com atraso.
+
+A análise faz parte de um estudo maior sobre:
+
+**Eficiência logística → Satisfação → Retenção de clientes**
+
+e pode ser posteriormente complementada por análises de:
+
+* tempo médio de entrega;
+* percentual de atrasos;
+* quantidade de dias de atraso;
+* relação entre atraso e nota;
+* recompra dos clientes;
+* impacto logístico na retenção;
+* modelos preditivos de satisfação ou recompra.
+
+---
+
+## 👨‍💻 Autor
+
+Projeto desenvolvido como parte de uma análise de dados aplicada ao dataset brasileiro de e-commerce da Olist.
