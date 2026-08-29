@@ -1,0 +1,102 @@
+# ============================================================
+# 3.4 PERFIL DAS AVALIAÇÕES DOS CLIENTES (VERSÃO DEFINITIVA - MATPLOTLIB)
+# ============================================================
+
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 1. CARREGAR E VALIDAR DADOS
+nome_arquivo = "olist_order_reviews_dataset.csv"
+
+if not os.path.exists(nome_arquivo):
+    raise FileNotFoundError(f"O arquivo '{nome_arquivo}' não foi encontrado.")
+
+df = pd.read_csv(nome_arquivo)
+
+if "review_score" not in df.columns:
+    raise ValueError("A coluna 'review_score' não foi encontrada.")
+
+df["review_score"] = pd.to_numeric(df["review_score"], errors="coerce")
+avaliacoes = df["review_score"].dropna()
+avaliacoes = avaliacoes[avaliacoes.isin([1, 2, 3, 4, 5])]
+
+# 2. CÁLCULOS ESTATÍSTICOS
+notas = [5, 4, 3, 2, 1]
+contagem = avaliacoes.value_counts().reindex(notas, fill_value=0)
+percentual = (contagem / contagem.sum()) * 100
+
+media = avaliacoes.mean()
+mediana = avaliacoes.median()
+
+percentual_positivo = avaliacoes.isin([4, 5]).mean() * 100
+percentual_neutro = (avaliacoes == 3).mean() * 100
+percentual_negativo = avaliacoes.isin([1, 2]).mean() * 100
+
+# 3. CRIAÇÃO DO CANVAS VISUAL
+fig, ax = plt.subplots(figsize=(14, 9), dpi=200)
+fig.patch.set_facecolor('white')
+ax.set_facecolor('white')
+
+# Configurar limites do gráfico
+ax.set_xlim(0, 8.2)
+ax.set_ylim(-1.75, 5.45)
+ax.axis('off')
+
+# Posicionamentos e Intensidades
+y_pos = {5: 4.00, 4: 3.00, 3: 2.00, 2: 1.00, 1: 0.00}
+brilho = {5: 1.00, 4: 0.82, 3: 0.62, 2: 0.42, 1: 0.25}
+x_inicio = 1.45
+espacamento = 0.82
+
+# 4. FUNÇÃO TRIGONOMÉTRICA PARA DESENHAR ESTRELAS DOURADAS
+def desenhar_estrela(ax, cx, cy, r_ext, r_int, intensidade):
+    pontos_x, pontos_y = [], []
+    for i in range(10):
+        angulo = np.pi / 2 + i * np.pi / 5
+        r = r_ext if i % 2 == 0 else r_int
+        pontos_x.append(cx + r * np.cos(angulo))
+        pontos_y.append(cy + r * np.sin(angulo))
+    
+    # Desenhar o halo de brilho (Backlight)
+    ax.scatter([cx], [cy], s=1200 * intensidade, color='#FFC107', alpha=0.15 * intensidade, edgecolors='none', zorder=2)
+    
+    # Desenhar o corpo principal da estrela
+    ax.fill(pontos_x, pontos_y, color='#FFC107', alpha=intensidade, zorder=3)
+    ax.plot(pontos_x + [pontos_x[0]], pontos_y + [pontos_y[0]], color='#B8860B', alpha=0.95 * intensidade, linewidth=1.2, zorder=4)
+    
+    # Desenhar o ponto de reflexo
+    ax.scatter([cx - 0.027], [cy + 0.032], s=15, color='#FFFFDC', alpha=0.70 * intensidade, zorder=5)
+
+# 5. DESENHAR ESTRELAS E PERCENTUAIS
+for nota in notas:
+    y = y_pos[nota]
+    intensidade = brilho[nota]
+
+    # Percentual por Nota
+    ax.text(0.25, y, f"{percentual[nota]:.2f}%", fontsize=14, fontweight='bold', color='#333333', va='center', ha='left')
+
+    # Desenhar a sequência de estrelas
+    for n in range(nota):
+        x = x_inicio + n * espacamento
+        desenhar_estrela(ax, x, y, 0.145, 0.06, intensidade)
+
+# 6. TÍTULO CENTRALIZADO
+ax.text(3.00, 5.10, "DISTRIBUIÇÃO DAS AVALIAÇÕES DOS CLIENTES", fontsize=21, fontweight='bold', color='#222222', ha='center', va='center')
+
+# 7. METRICAS E RESUMO NO RODAPÉ
+ax.text(0.25, -0.85, f"Avaliações positivas: {percentual_positivo:.2f}%", fontsize=14, fontweight='bold', color='#333333', va='center', ha='left')
+ax.text(0.25, -1.15, f"Avaliações neutras: {percentual_neutro:.2f}%", fontsize=14, fontweight='bold', color='#666666', va='center', ha='left')
+ax.text(0.25, -1.45, f"Avaliações negativas: {percentual_negativo:.2f}%", fontsize=14, fontweight='bold', color='#666666', va='center', ha='left')
+
+ax.text(4.10, -0.85, f"Média: {media:.2f}", fontsize=14, fontweight='bold', color='#222222', va='center', ha='center')
+ax.text(4.10, -1.15, f"Mediana: {mediana:.0f}", fontsize=14, fontweight='bold', color='#222222', va='center', ha='center')
+
+# 8. EXIBIR E SALVAR O ARQUIVO PNG DEFINITIVO
+nome_saida = "distribuicao_avaliacoes_clientes_plotly.png"
+plt.tight_layout()
+plt.savefig(nome_saida, bbox_inches='tight', facecolor='white', dpi=300)
+plt.show()
+
+print(f"\n[SUCESSO] Gráfico gerado e salvo com sucesso em: {nome_saida}")
