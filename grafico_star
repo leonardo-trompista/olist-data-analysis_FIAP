@@ -1,0 +1,1227 @@
+# ============================================================
+# 5.1 RELAÇÃO ENTRE LOGÍSTICA E SATISFAÇÃO
+# ATRASO × NOTA DO CLIENTE
+#
+# Agrupamentos:
+#
+# 4 + 5 estrelas = avaliações positivas
+# 3 estrelas      = avaliação intermediária
+# 1 + 2 estrelas = avaliações negativas
+#
+# O percentual apresentado nos grupos 4+5 e 1+2
+# é a soma das respectivas notas.
+#
+# Bases:
+#   olist_orders_dataset.csv
+#   olist_order_reviews_dataset.csv
+# ============================================================
+
+
+# ============================================================
+# 1. IMPORTAR BIBLIOTECAS
+# ============================================================
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import matplotlib.patheffects as path_effects
+
+# ============================================================
+# 2. DEFINIR ARQUIVOS
+# ============================================================
+
+arquivo_pedidos = "olist_orders_dataset.csv"
+
+arquivo_avaliacoes = "olist_order_reviews_dataset.csv"
+
+
+# ============================================================
+# 3. VERIFICAR ARQUIVOS
+# ============================================================
+
+if not os.path.exists(arquivo_pedidos):
+
+    raise FileNotFoundError(
+        f"O arquivo '{arquivo_pedidos}' não foi encontrado."
+    )
+
+
+if not os.path.exists(arquivo_avaliacoes):
+
+    raise FileNotFoundError(
+        f"O arquivo '{arquivo_avaliacoes}' não foi encontrado."
+    )
+
+
+# ============================================================
+# 4. CARREGAR BASES
+# ============================================================
+
+df_pedidos = pd.read_csv(
+    arquivo_pedidos
+)
+
+
+# ------------------------------------------------------------
+# LEITURA MAIS TOLERANTE DO CSV DE AVALIAÇÕES
+#
+# engine="python":
+# Mais tolerante a problemas de formatação no CSV.
+#
+# on_bad_lines="warn":
+# Ignora linhas malformadas, mas informa no console.
+# ------------------------------------------------------------
+
+df_avaliacoes = pd.read_csv(
+    arquivo_avaliacoes,
+    engine="python",
+    on_bad_lines="warn"
+)
+
+
+print("Arquivos carregados com sucesso.")
+
+print()
+
+print(
+    f"Pedidos carregados: "
+    f"{len(df_pedidos):,}".replace(",", ".")
+)
+
+print(
+    f"Avaliações carregadas: "
+    f"{len(df_avaliacoes):,}".replace(",", ".")
+)
+
+
+# ============================================================
+# 5. VERIFICAR COLUNAS
+# ============================================================
+
+colunas_pedidos = [
+
+    "order_id",
+
+    "order_delivered_customer_date",
+
+    "order_estimated_delivery_date"
+
+]
+
+
+colunas_avaliacoes = [
+
+    "order_id",
+
+    "review_score"
+
+]
+
+
+for coluna in colunas_pedidos:
+
+    if coluna not in df_pedidos.columns:
+
+        raise ValueError(
+
+            f"A coluna '{coluna}' não foi encontrada "
+            "em olist_orders_dataset.csv."
+
+        )
+
+
+for coluna in colunas_avaliacoes:
+
+    if coluna not in df_avaliacoes.columns:
+
+        raise ValueError(
+
+            f"A coluna '{coluna}' não foi encontrada "
+            "em olist_order_reviews_dataset.csv."
+
+        )
+
+
+# ============================================================
+# 6. CONVERTER DATAS
+# ============================================================
+
+df_pedidos[
+    "order_delivered_customer_date"
+] = pd.to_datetime(
+
+    df_pedidos[
+        "order_delivered_customer_date"
+    ],
+
+    errors="coerce"
+
+)
+
+
+df_pedidos[
+    "order_estimated_delivery_date"
+] = pd.to_datetime(
+
+    df_pedidos[
+        "order_estimated_delivery_date"
+    ],
+
+    errors="coerce"
+
+)
+
+
+# ============================================================
+# 7. REMOVER PEDIDOS SEM DATAS
+# ============================================================
+
+df_pedidos = df_pedidos.dropna(
+
+    subset=[
+
+        "order_delivered_customer_date",
+
+        "order_estimated_delivery_date"
+
+    ]
+
+).copy()
+
+
+# ============================================================
+# 8. CLASSIFICAR ENTREGA
+# ============================================================
+
+df_pedidos["status_entrega"] = np.where(
+
+    df_pedidos[
+        "order_delivered_customer_date"
+    ]
+
+    <=
+
+    df_pedidos[
+        "order_estimated_delivery_date"
+    ],
+
+    "No prazo",
+
+    "Com atraso"
+
+)
+
+
+# ============================================================
+# 9. SELECIONAR COLUNAS
+# ============================================================
+
+df_pedidos = df_pedidos[
+
+    [
+
+        "order_id",
+
+        "status_entrega"
+
+    ]
+
+].copy()
+
+
+df_avaliacoes = df_avaliacoes[
+
+    [
+
+        "order_id",
+
+        "review_score"
+
+    ]
+
+].copy()
+
+
+# ============================================================
+# 10. CONVERTER NOTAS
+# ============================================================
+
+df_avaliacoes["review_score"] = pd.to_numeric(
+
+    df_avaliacoes["review_score"],
+
+    errors="coerce"
+
+)
+
+
+df_avaliacoes = df_avaliacoes.dropna(
+
+    subset=["review_score"]
+
+).copy()
+
+
+# ============================================================
+# 11. RELACIONAR PEDIDOS E AVALIAÇÕES
+# ============================================================
+
+df_analise = pd.merge(
+
+    df_pedidos,
+
+    df_avaliacoes,
+
+    on="order_id",
+
+    how="inner"
+
+)
+
+
+# ============================================================
+# 12. MANTER NOTAS DE 1 A 5
+# ============================================================
+
+df_analise = df_analise[
+
+    df_analise["review_score"].isin(
+
+        [1, 2, 3, 4, 5]
+
+    )
+
+].copy()
+
+
+# ============================================================
+# 13. TABELA DE DISTRIBUIÇÃO
+# ============================================================
+
+tabela_original = pd.crosstab(
+
+    df_analise["status_entrega"],
+
+    df_analise["review_score"],
+
+    normalize="index"
+
+) * 100
+
+
+# ============================================================
+# 14. GARANTIR TODAS AS NOTAS
+# ============================================================
+
+tabela_original = tabela_original.reindex(
+
+    index=[
+
+        "No prazo",
+
+        "Com atraso"
+
+    ],
+
+    columns=[
+
+        1,
+
+        2,
+
+        3,
+
+        4,
+
+        5
+
+    ],
+
+    fill_value=0
+
+)
+
+
+# ============================================================
+# 15. CRIAR TABELA AGRUPADA
+# ============================================================
+
+tabela_agrupada = pd.DataFrame(
+
+    index=[
+
+        "No prazo",
+
+        "Com atraso"
+
+    ]
+
+)
+
+
+# ------------------------------------------------------------
+# 4 + 5
+# ------------------------------------------------------------
+
+tabela_agrupada["4-5 estrelas"] = (
+
+    tabela_original[4]
+
+    +
+
+    tabela_original[5]
+
+)
+
+
+# ------------------------------------------------------------
+# 3
+# ------------------------------------------------------------
+
+tabela_agrupada["3 estrelas"] = (
+
+    tabela_original[3]
+
+)
+
+
+# ------------------------------------------------------------
+# 1 + 2
+# ------------------------------------------------------------
+
+tabela_agrupada["1-2 estrelas"] = (
+
+    tabela_original[1]
+
+    +
+
+    tabela_original[2]
+
+)
+
+
+# ============================================================
+# 16. EXIBIR TABELAS
+# ============================================================
+
+print()
+
+print("=" * 75)
+
+print("DISTRIBUIÇÃO DAS AVALIAÇÕES")
+
+print("=" * 75)
+
+print()
+
+print(
+
+    tabela_agrupada.round(2)
+
+)
+
+print()
+
+print("Detalhamento das notas:")
+
+print()
+
+print(
+
+    tabela_original.round(2)
+
+)
+
+
+# ============================================================
+# 17. CORES
+# ============================================================
+
+# ------------------------------------------------------------
+# 4 + 5 ESTRELAS
+# Azul claro bem desbotado
+# ------------------------------------------------------------
+
+COR_POSITIVO = "#D9EAF7"
+
+
+# ------------------------------------------------------------
+# 3 ESTRELAS
+# Laranja bem desbotado
+# ------------------------------------------------------------
+
+COR_NEUTRO = "#FCE5CD"
+
+
+# ------------------------------------------------------------
+# 1 + 2 ESTRELAS
+# Vermelho bem desbotado
+# ------------------------------------------------------------
+
+COR_NEGATIVO = "#F4CCCC"
+
+
+# ------------------------------------------------------------
+# COR DAS ESTRELAS
+# ------------------------------------------------------------
+
+COR_ESTRELA = "#F2C94C"
+
+
+# ------------------------------------------------------------
+# COR DOS TEXTOS
+# ------------------------------------------------------------
+
+COR_TEXTO = "#222222"
+
+
+# ------------------------------------------------------------
+# COR DAS BORDAS
+# ------------------------------------------------------------
+
+COR_BORDA = "#222222"
+
+
+# ============================================================
+# 18. CRIAR FIGURA
+# ============================================================
+
+fig, ax = plt.subplots(
+
+    figsize=(10, 13),
+
+    facecolor="white"
+
+)
+
+
+# ============================================================
+# 19. POSIÇÕES DAS BARRAS
+# ============================================================
+
+posicoes = np.array([
+
+    0,
+
+    1
+
+])
+
+
+largura = 0.42
+
+
+# ============================================================
+# 20. DESENHAR BARRAS
+# ============================================================
+
+for j, situacao in enumerate(
+
+    tabela_original.index
+
+):
+
+    # ========================================================
+    # NOTAS INDIVIDUAIS
+    # ========================================================
+
+    p1 = tabela_original.loc[
+
+        situacao,
+
+        1
+
+    ]
+
+
+    p2 = tabela_original.loc[
+
+        situacao,
+
+        2
+
+    ]
+
+
+    p3 = tabela_original.loc[
+
+        situacao,
+
+        3
+
+    ]
+
+
+    p4 = tabela_original.loc[
+
+        situacao,
+
+        4
+
+    ]
+
+
+    p5 = tabela_original.loc[
+
+        situacao,
+
+        5
+
+    ]
+
+
+    # ========================================================
+    # GRUPOS
+    # ========================================================
+
+    positivo = p5 + p4
+
+    neutro = p3
+
+    negativo = p2 + p1
+
+
+    # ========================================================
+    # BARRA — 4 + 5 ESTRELAS
+    # ========================================================
+
+    ax.bar(
+
+        posicoes[j],
+
+        positivo,
+
+        width=largura,
+
+        bottom=0,
+
+        facecolor=COR_POSITIVO,
+
+        edgecolor=COR_BORDA,
+
+        linewidth=1.6
+
+    )
+
+
+    # ========================================================
+    # BARRA — 3 ESTRELAS
+    # ========================================================
+
+    ax.bar(
+
+        posicoes[j],
+
+        neutro,
+
+        width=largura,
+
+        bottom=positivo,
+
+        facecolor=COR_NEUTRO,
+
+        edgecolor=COR_BORDA,
+
+        linewidth=1.6
+
+    )
+
+
+    # ========================================================
+    # BARRA — 1 + 2 ESTRELAS
+    # ========================================================
+
+    ax.bar(
+
+        posicoes[j],
+
+        negativo,
+
+        width=largura,
+
+        bottom=positivo + neutro,
+
+        facecolor=COR_NEGATIVO,
+
+        edgecolor=COR_BORDA,
+
+        linewidth=1.6
+
+    )
+
+
+# ============================================================
+# 21. POSICIONAR TEXTOS E ESTRELAS
+# ============================================================
+
+for j, situacao in enumerate(
+
+    tabela_original.index
+
+):
+
+    # ========================================================
+    # NOTAS INDIVIDUAIS
+    # ========================================================
+
+    p1 = tabela_original.loc[
+
+        situacao,
+
+        1
+
+    ]
+
+
+    p2 = tabela_original.loc[
+
+        situacao,
+
+        2
+
+    ]
+
+
+    p3 = tabela_original.loc[
+
+        situacao,
+
+        3
+
+    ]
+
+
+    p4 = tabela_original.loc[
+
+        situacao,
+
+        4
+
+    ]
+
+
+    p5 = tabela_original.loc[
+
+        situacao,
+
+        5
+
+    ]
+
+
+    # ========================================================
+    # GRUPOS
+    # ========================================================
+
+    positivo = p5 + p4
+
+    neutro = p3
+
+    negativo = p2 + p1
+
+
+    # ========================================================
+    # GRUPO 4 + 5
+    # ========================================================
+
+    if positivo > 0:
+
+        centro = positivo / 2
+
+
+        # ----------------------------------------------------
+        # 5 ESTRELAS
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro + positivo * 0.20,
+
+            "★★★★★",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=17,
+
+            fontweight="bold",
+
+            color=COR_ESTRELA,
+            path_effects=[
+    path_effects.withStroke(
+        linewidth=2,
+        foreground="black"
+    )
+],
+
+
+
+            zorder=10
+
+        )
+
+
+        # ----------------------------------------------------
+        # 4 ESTRELAS
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro,
+
+            "★★★★",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=17,
+
+            fontweight="bold",
+
+            color=COR_ESTRELA,
+            path_effects=[
+    path_effects.withStroke(
+        linewidth=2,
+        foreground="black"
+    )
+],
+
+
+
+            zorder=10
+
+        )
+
+
+        # ----------------------------------------------------
+        # PERCENTUAL
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro - positivo * 0.20,
+
+            f"{positivo:.1f}%",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=15,
+
+            fontweight="bold",
+
+            color=COR_TEXTO,
+
+            zorder=10
+
+        )
+
+
+    # ========================================================
+    # GRUPO 3
+    # ========================================================
+
+    if neutro > 0:
+
+        centro = positivo + neutro / 2
+
+
+        # ----------------------------------------------------
+        # 3 ESTRELAS
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro + neutro * 0.16,
+
+            "★★★",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=17,
+
+            fontweight="bold",
+
+            color=COR_ESTRELA,
+            path_effects=[
+    path_effects.withStroke(
+        linewidth=2,
+        foreground="black"
+    )
+],
+
+
+            zorder=10
+
+        )
+
+
+        # ----------------------------------------------------
+        # PERCENTUAL
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro - neutro * 0.16,
+
+            f"{neutro:.1f}%",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=15,
+
+            fontweight="bold",
+
+            color=COR_TEXTO,
+
+            zorder=10
+
+        )
+
+
+    # ========================================================
+    # GRUPO 1 + 2
+    # ========================================================
+
+    if negativo > 0:
+
+        centro = (
+
+            positivo
+
+            +
+
+            neutro
+
+            +
+
+            negativo / 2
+
+        )
+
+
+        # ----------------------------------------------------
+        # 2 ESTRELAS
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro + negativo * 0.20,
+
+            "★★",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=17,
+
+            fontweight="bold",
+
+            color=COR_ESTRELA,
+            path_effects=[
+    path_effects.withStroke(
+        linewidth=2,
+        foreground="black"
+    )
+],
+
+
+
+            zorder=10
+
+        )
+
+
+        # ----------------------------------------------------
+        # 1 ESTRELA
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro,
+
+            "★",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=17,
+
+            fontweight="bold",
+
+            color=COR_ESTRELA,
+            path_effects=[
+    path_effects.withStroke(
+        linewidth=2,
+        foreground="black"
+    )
+],
+
+
+            zorder=10
+
+        )
+
+
+        # ----------------------------------------------------
+        # PERCENTUAL
+        # ----------------------------------------------------
+
+        ax.text(
+
+            posicoes[j],
+
+            centro - negativo * 0.20,
+
+            f"{negativo:.1f}%",
+
+            ha="center",
+
+            va="center",
+
+            fontsize=15,
+
+            fontweight="bold",
+
+            color=COR_TEXTO,
+
+            zorder=10
+
+        )
+
+
+# ============================================================
+# 22. EIXO X
+# ============================================================
+
+ax.set_xticks(
+
+    posicoes
+
+)
+
+
+ax.set_xticklabels(
+
+    [
+
+        "No prazo",
+
+        "Com atraso"
+
+    ],
+
+    fontsize=15,
+
+    fontweight="bold",
+
+    color=COR_TEXTO
+
+)
+
+
+# ============================================================
+# 23. EIXO Y
+# ============================================================
+
+ax.set_ylim(
+
+    0,
+
+    100
+
+)
+
+
+ax.get_yaxis().set_visible(False)
+
+
+# ============================================================
+# 24. TÍTULO
+# ============================================================
+
+ax.set_title(
+
+    "ATRASO × NOTA DO CLIENTE",
+
+    fontsize=23,
+
+    fontweight="bold",
+
+    color=COR_TEXTO,
+
+    pad=30
+
+)
+
+
+# ============================================================
+# 25. SUBTÍTULO
+# ============================================================
+
+ax.text(
+
+    0.5,
+
+    1.01,
+
+    "Distribuição das avaliações segundo o cumprimento do prazo",
+
+    transform=ax.transAxes,
+
+    ha="center",
+
+    va="bottom",
+
+    fontsize=12,
+
+    color=COR_TEXTO
+
+)
+
+
+# ============================================================
+# 26. REMOVER GRADE
+# ============================================================
+
+ax.grid(False)
+
+
+# ============================================================
+# 27. REMOVER BORDAS
+# ============================================================
+
+ax.spines["top"].set_visible(False)
+
+ax.spines["right"].set_visible(False)
+
+ax.spines["left"].set_visible(False)
+
+ax.spines["bottom"].set_visible(False)
+
+
+# ============================================================
+# 28. REMOVER MARCAS
+# ============================================================
+
+ax.tick_params(
+
+    axis="x",
+
+    length=0
+
+)
+
+
+# ============================================================
+# 29. SEM LEGENDA
+# ============================================================
+
+
+# ============================================================
+# 30. LIMITES HORIZONTAIS
+# ============================================================
+
+ax.set_xlim(
+
+    -0.55,
+
+    1.55
+
+)
+
+
+# ============================================================
+# 31. AJUSTAR LAYOUT
+# ============================================================
+
+plt.tight_layout()
+
+
+# ============================================================
+# 32. EXIBIR
+# ============================================================
+
+plt.show()
+
+
+# ============================================================
+# 33. EXPORTAR PNG
+# ============================================================
+
+nome_saida = (
+
+    "5_1_atraso_vs_nota_cliente.png"
+
+)
+
+
+fig.savefig(
+
+    nome_saida,
+
+    dpi=300,
+
+    bbox_inches="tight",
+
+    facecolor="white"
+
+)
+
+
+# ============================================================
+# 34. RESUMO
+# ============================================================
+
+print()
+
+print("=" * 75)
+
+print("GRÁFICO EXPORTADO COM SUCESSO")
+
+print("=" * 75)
+
+print()
+
+print(
+
+    f"Pedidos relacionados com avaliações: "
+    f"{len(df_analise):,}".replace(",", ".")
+
+)
+
+print()
+
+print(
+
+    f"Arquivo: {nome_saida}"
+
+)
+
+print()
+
+print("=" * 75)
