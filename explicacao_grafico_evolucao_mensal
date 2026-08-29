@@ -1,0 +1,95 @@
+## 📈 Evolução Mensal do Número de Pedidos
+
+### 🎯 Objetivo
+
+Este gráfico apresenta a **evolução mensal do volume de pedidos** realizados na plataforma Olist ao longo do período analisado.
+
+O objetivo é identificar padrões de crescimento ou redução no volume de vendas, além de destacar os meses que apresentaram os maiores e menores volumes de pedidos.
+
+---
+
+### 🔎 Metodologia
+
+A análise utiliza a coluna:
+
+```text
+order_purchase_timestamp
+```
+
+presente na base de pedidos da Olist.
+
+O processo realizado foi:
+
+1. Carregamento da base de pedidos em formato CSV ou Excel;
+2. Verificação da existência da coluna de data;
+3. Conversão da data de compra para o formato `datetime`;
+4. Remoção de registros sem uma data de compra válida;
+5. Extração do período mensal a partir da data de compra;
+6. Agrupamento dos pedidos por mês;
+7. Contagem da quantidade de pedidos em cada período;
+8. Identificação do mês com maior e menor volume;
+9. Cálculo da média mensal de pedidos.
+
+---
+
+### 📊 Visualização
+
+O gráfico utiliza uma **linha temporal**, na qual:
+
+* O eixo X representa os meses e anos;
+* O eixo Y representa a quantidade de pedidos;
+* Cada ponto representa o volume de pedidos realizado em determinado mês;
+* O ponto de maior volume é destacado visualmente;
+* Uma linha vertical indica o mês em que ocorreu o pico;
+* Uma anotação apresenta a quantidade de pedidos registrada no mês de maior volume.
+
+Além do gráfico, a análise apresenta uma tabela com a quantidade de pedidos registrada em cada mês.
+
+---
+## 🛠️ Tecnologias utilizadas
+
+* **Python** — linguagem utilizada para desenvolvimento da análise;
+* **Pandas** — carregamento, tratamento, transformação e agrupamento dos dados;
+* **Matplotlib** — criação e personalização do gráfico de evolução mensal;
+* **NumPy** — suporte às operações numéricas utilizadas na análise;
+* **Google Colab** — ambiente utilizado para execução do código e carregamento dos arquivos;
+* **CSV / Excel** — formatos de entrada aceitos pelo código para a base de pedidos;
+* **GitHub** — utilizado para versionamento e documentação do projeto.
+
+### 🧮 Indicadores calculados
+
+São calculados três indicadores principais:
+
+**Média mensal**
+
+Representa o volume médio de pedidos realizados por mês durante o período analisado.
+
+**Maior volume mensal**
+
+Identifica o mês que apresentou a maior quantidade de pedidos.
+
+**Menor volume mensal**
+
+Identifica o mês que apresentou a menor quantidade de pedidos.
+
+---
+
+### 💡 Interpretação
+
+A evolução mensal permite visualizar o comportamento do volume de pedidos ao longo do tempo e identificar períodos de maior ou menor movimentação comercial.
+
+Os picos observados podem estar relacionados a períodos de maior demanda, sazonalidade, campanhas promocionais ou crescimento da plataforma. Da mesma forma, reduções no volume podem representar períodos de menor demanda ou alterações no comportamento dos consumidores.
+
+Essa análise fornece uma visão inicial da **dinâmica temporal das vendas**, podendo ser utilizada como base para análises posteriores de sazonalidade, logística e capacidade operacional.
+
+---
+
+### 📌 Aplicação no projeto
+
+A evolução do número de pedidos é importante para contextualizar as demais análises do projeto.
+
+Variações no volume mensal de pedidos podem impactar diretamente:
+
+**Volume de vendas → Demanda logística → Entregas → Atrasos → Satisfação → Retenção**
+
+Dessa forma, compreender a evolução temporal dos pedidos ajuda a interpretar outros indicadores de desempenho logístico e comportamento dos clientes.
