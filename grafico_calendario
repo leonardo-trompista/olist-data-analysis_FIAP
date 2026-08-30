@@ -1,0 +1,1127 @@
+# @title
+# ============================================================
+# CALENDÁRIO DE ATRASOS
+# ============================================================
+#
+# XLSX:
+#   order_delivered_customer_date
+#   order_estimated_delivery_date
+#
+# FAIXAS:
+#   01 = exatamente 1 dia
+#   02 = exatamente 2 dias
+#   ...
+#   29 = exatamente 29 dias
+#   30+ = 30 dias ou mais
+#
+# O percentual representa a participação daquela faixa
+# no TOTAL DE PEDIDOS ATRASADOS.
+#
+# ============================================================
+
+
+# ============================================================
+# 1. IMPORTAR BIBLIOTECAS
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from google.colab import files
+
+
+# ============================================================
+# 2. CARREGAR ARQUIVO
+# ============================================================
+
+print("Selecione o arquivo CSV ou Excel:")
+
+uploaded = files.upload()
+
+arquivo = list(uploaded.keys())[0]
+
+# ------------------------------------------------------------
+# Identificar automaticamente o formato
+# ------------------------------------------------------------
+
+if arquivo.lower().endswith(".csv"):
+
+    df = pd.read_csv(arquivo)
+
+elif arquivo.lower().endswith((".xlsx", ".xls")):
+
+    df = pd.read_excel(arquivo)
+
+else:
+
+    raise ValueError(
+        "Formato de arquivo não suportado. "
+        "Selecione um arquivo CSV, XLSX ou XLS."
+    )
+
+print(f"\nArquivo carregado: {arquivo}")
+print(f"Registros carregados: {len(df):,}".replace(",", "."))
+# ============================================================
+# 3. VERIFICAR COLUNAS
+# ============================================================
+
+colunas_necessarias = [
+
+    "order_delivered_customer_date",
+
+    "order_estimated_delivery_date"
+
+]
+
+
+for coluna in colunas_necessarias:
+
+    if coluna not in df.columns:
+
+        raise ValueError(
+
+            f"A coluna '{coluna}' não foi encontrada "
+            "no arquivo."
+
+        )
+
+
+# ============================================================
+# 4. CONVERTER DATAS
+# ============================================================
+
+df["order_delivered_customer_date"] = pd.to_datetime(
+
+    df["order_delivered_customer_date"],
+
+    errors="coerce"
+
+)
+
+
+df["order_estimated_delivery_date"] = pd.to_datetime(
+
+    df["order_estimated_delivery_date"],
+
+    errors="coerce"
+
+)
+
+
+# ============================================================
+# 5. REMOVER REGISTROS SEM DATAS
+# ============================================================
+
+df = df.dropna(
+
+    subset=[
+
+        "order_delivered_customer_date",
+
+        "order_estimated_delivery_date"
+
+    ]
+
+).copy()
+
+
+# ============================================================
+# 6. CALCULAR DIAS DE ATRASO
+# ============================================================
+
+df["delay_days"] = (
+
+    df["order_delivered_customer_date"]
+
+    -
+
+    df["order_estimated_delivery_date"]
+
+).dt.days
+
+
+# ============================================================
+# 7. CONSIDERAR SOMENTE PEDIDOS ATRASADOS
+# ============================================================
+
+df_atrasos = df[
+
+    df["delay_days"] > 0
+
+].copy()
+
+
+# ============================================================
+# 8. CRIAR AS 30 FAIXAS
+# ============================================================
+
+faixas = {}
+
+
+# ------------------------------------------------------------
+# 1 a 29 dias
+# ------------------------------------------------------------
+
+for dia in range(1, 30):
+
+    faixas[dia] = int(
+
+        (
+
+            df_atrasos["delay_days"]
+
+            == dia
+
+        ).sum()
+
+    )
+
+
+# ------------------------------------------------------------
+# 30 dias ou mais
+# ------------------------------------------------------------
+
+faixas[30] = int(
+
+    (
+
+        df_atrasos["delay_days"]
+
+        >= 30
+
+    ).sum()
+
+)
+
+
+# ============================================================
+# 9. TOTAL DE PEDIDOS ATRASADOS
+# ============================================================
+
+total_atrasados = sum(
+
+    faixas.values()
+
+)
+
+
+# ============================================================
+# 10. PERCENTUAL DE CADA FAIXA
+# ============================================================
+
+percentuais = {}
+
+
+for dia in range(1, 31):
+
+    if total_atrasados > 0:
+
+        percentuais[dia] = (
+
+            faixas[dia]
+
+            /
+
+            total_atrasados
+
+        ) * 100
+
+    else:
+
+        percentuais[dia] = 0
+
+
+# ============================================================
+# 11. MAIOR PERCENTUAL
+# ============================================================
+
+maior_percentual = max(
+
+    percentuais.values()
+
+)
+
+
+if maior_percentual == 0:
+
+    maior_percentual = 1
+
+
+# ============================================================
+# 12. PALETA MAGENTA
+# ============================================================
+
+MAGENTA = np.array(
+
+    [220, 0, 100]
+
+)
+
+
+FUNDO_CLARO = np.array(
+
+    [250, 245, 248]
+
+)
+
+
+def cor_magenta(percentual):
+
+    intensidade = (
+
+        percentual
+
+        /
+
+        maior_percentual
+
+    )
+
+
+    intensidade = max(
+
+        0,
+
+        min(
+
+            1,
+
+            intensidade
+
+        )
+
+    )
+
+
+    # --------------------------------------------------------
+    # Mistura entre fundo claro e magenta
+    # --------------------------------------------------------
+
+    rgb = (
+
+        FUNDO_CLARO
+
+        * (1 - intensidade)
+
+        +
+
+        MAGENTA
+
+        * intensidade
+
+    )
+
+
+    rgb = rgb.astype(int)
+
+
+    return (
+
+        f"rgb("
+
+        f"{rgb[0]},"
+
+        f"{rgb[1]},"
+
+        f"{rgb[2]}"
+
+        f")"
+
+    )
+
+
+# ============================================================
+# 13. COR DO TEXTO
+# ============================================================
+
+def cor_texto(percentual):
+
+    intensidade = (
+
+        percentual
+
+        /
+
+        maior_percentual
+
+    )
+
+
+    if intensidade >= 0.55:
+
+        return "#FFFFFF"
+
+
+    return "#171717"
+
+
+# ============================================================
+# 14. LAYOUT DOS CARDS
+# ============================================================
+
+COLUNAS = 6
+
+LINHAS = 5
+
+CARD_LARGURA = 1
+
+CARD_ALTURA = 1
+
+ESPACO_X = 0.16
+
+ESPACO_Y = 0.20
+
+
+largura_total = (
+
+    COLUNAS
+
+    * CARD_LARGURA
+
+    +
+
+    (COLUNAS - 1)
+
+    * ESPACO_X
+
+)
+
+
+altura_total = (
+
+    LINHAS
+
+    * CARD_ALTURA
+
+    +
+
+    (LINHAS - 1)
+
+    * ESPACO_Y
+
+)
+
+
+# ============================================================
+# 15. FUNÇÃO PARA CANTO ARREDONDADO
+# ============================================================
+
+def rounded_rect(
+
+    x0,
+
+    y0,
+
+    x1,
+
+    y1,
+
+    raio=0.08
+
+):
+
+    return (
+
+        f"M {x0+raio},{y0} "
+
+        f"L {x1-raio},{y0} "
+
+        f"Q {x1},{y0} {x1},{y0+raio} "
+
+        f"L {x1},{y1-raio} "
+
+        f"Q {x1},{y1} {x1-raio},{y1} "
+
+        f"L {x0+raio},{y1} "
+
+        f"Q {x0},{y1} {x0},{y1-raio} "
+
+        f"L {x0},{y0+raio} "
+
+        f"Q {x0},{y0} {x0+raio},{y0} "
+
+        f"Z"
+
+    )
+
+
+# ============================================================
+# 16. CRIAR FIGURA
+# ============================================================
+
+fig = go.Figure()
+
+
+# ============================================================
+# 17. IDENTIFICAR MAIOR FAIXA
+# ============================================================
+
+maior_dia = max(
+
+    percentuais,
+
+    key=percentuais.get
+
+)
+
+
+# ============================================================
+# 18. CRIAR OS 30 CARDS
+# ============================================================
+
+for indice in range(30):
+
+    dia = indice + 1
+
+    coluna = indice % COLUNAS
+
+    linha = indice // COLUNAS
+
+
+    # --------------------------------------------------------
+    # POSIÇÃO HORIZONTAL
+    # --------------------------------------------------------
+
+    x0 = (
+
+        coluna
+
+        * (
+
+            CARD_LARGURA
+
+            +
+
+            ESPACO_X
+
+        )
+
+    )
+
+
+    x1 = x0 + CARD_LARGURA
+
+
+    # --------------------------------------------------------
+    # POSIÇÃO VERTICAL
+    # --------------------------------------------------------
+
+    y0 = (
+
+        LINHAS
+
+        -
+
+        linha
+
+        -
+
+        1
+
+    ) * (
+
+        CARD_ALTURA
+
+        +
+
+        ESPACO_Y
+
+    )
+
+
+    y1 = y0 + CARD_ALTURA
+
+
+    # --------------------------------------------------------
+    # DADOS
+    # --------------------------------------------------------
+
+    quantidade = faixas[dia]
+
+    percentual = percentuais[dia]
+
+
+    # --------------------------------------------------------
+    # CORES
+    # --------------------------------------------------------
+
+    cor_fundo = cor_magenta(
+
+        percentual
+
+    )
+
+
+    cor_fonte = cor_texto(
+
+        percentual
+
+    )
+
+
+    # --------------------------------------------------------
+    # DESTAQUE DA MAIOR FAIXA
+    # --------------------------------------------------------
+
+    if dia == maior_dia:
+
+        cor_borda = "#111111"
+
+        largura_borda = 3
+
+    else:
+
+        cor_borda = (
+
+            "rgba(220,0,100,0.18)"
+
+        )
+
+        largura_borda = 1
+
+
+    # ========================================================
+    # CARD
+    # ========================================================
+
+    fig.add_shape(
+
+        type="path",
+
+        path=rounded_rect(
+
+            x0,
+
+            y0,
+
+            x1,
+
+            y1
+
+        ),
+
+        fillcolor=cor_fundo,
+
+        line=dict(
+
+            color=cor_borda,
+
+            width=largura_borda
+
+        ),
+
+        layer="below"
+
+    )
+
+
+    # ========================================================
+    # NÚMERO DO CARD
+    # ========================================================
+
+    numero = (
+
+        f"{dia:02d}"
+
+        if dia < 30
+
+        else "30+"
+
+    )
+
+
+    fig.add_annotation(
+
+        x=x0 + 0.10,
+
+        y=y1 - 0.12,
+
+        text=f"<b>{numero}</b>",
+
+        showarrow=False,
+
+        xanchor="left",
+
+        yanchor="top",
+
+        font=dict(
+
+            size=17,
+
+            color=cor_fonte
+
+        )
+
+    )
+
+
+    # ========================================================
+    # QUANTIDADE
+    # ========================================================
+
+    quantidade_formatada = (
+
+        f"{quantidade:,}"
+
+        .replace(",", ".")
+
+    )
+
+
+    fig.add_annotation(
+
+        x=x0 + 0.50,
+
+        y=y0 + 0.56,
+
+        text=(
+
+            f"<b>{quantidade_formatada}</b>"
+
+        ),
+
+        showarrow=False,
+
+        xanchor="center",
+
+        yanchor="middle",
+
+        font=dict(
+
+            size=25,
+
+            color=cor_fonte
+
+        )
+
+    )
+
+
+    # ========================================================
+    # TEXTO "PEDIDOS"
+    # ========================================================
+
+    fig.add_annotation(
+
+        x=x0 + 0.50,
+
+        y=y0 + 0.37,
+
+        text="pedidos",
+
+        showarrow=False,
+
+        xanchor="center",
+
+        yanchor="middle",
+
+        font=dict(
+
+            size=10,
+
+            color=(
+
+                "#F5F5F5"
+
+                if cor_fonte == "#FFFFFF"
+
+                else "#6B7280"
+
+            )
+
+        )
+
+    )
+
+
+    # ========================================================
+    # PERCENTUAL
+    # ========================================================
+
+    fig.add_annotation(
+
+        x=x0 + 0.50,
+
+        y=y0 + 0.14,
+
+        text=(
+
+            f"<b>{percentual:.1f}%</b>"
+
+        ),
+
+        showarrow=False,
+
+        xanchor="center",
+
+        yanchor="middle",
+
+        font=dict(
+
+            size=13,
+
+            color=cor_fonte
+
+        )
+
+    )
+
+
+    # ========================================================
+    # TOOLTIP
+    # ========================================================
+
+    fig.add_trace(
+
+        go.Scatter(
+
+            x=[
+
+                x0 + 0.5
+
+            ],
+
+            y=[
+
+                y0 + 0.5
+
+            ],
+
+            mode="markers",
+
+            marker=dict(
+
+                size=70,
+
+                opacity=0
+
+            ),
+
+            hovertemplate=(
+
+                f"<b>{numero} dias de atraso</b>"
+
+                f"<br><br>"
+
+                f"Pedidos: "
+
+                f"{quantidade_formatada}"
+
+                f"<br>"
+
+                f"Participação: "
+
+                f"{percentual:.2f}%"
+
+                f"<extra></extra>"
+
+            ),
+
+            showlegend=False
+
+        )
+
+    )
+
+
+# ============================================================
+# 19. TÍTULO
+# ============================================================
+
+fig.add_annotation(
+
+    x=largura_total / 2,
+
+    y=altura_total + 0.52,
+
+    text=(
+
+        "<b>CALENDÁRIO DE ATRASOS</b>"
+
+    ),
+
+    showarrow=False,
+
+    xanchor="center",
+
+    yanchor="middle",
+
+    font=dict(
+
+        size=24,
+
+        color="#171717"
+
+    )
+
+)
+
+
+# ============================================================
+# 20. SUBTÍTULO
+# ============================================================
+
+total_formatado = (
+
+    f"{total_atrasados:,}"
+
+    .replace(",", ".")
+
+)
+
+
+fig.add_annotation(
+
+    x=largura_total / 2,
+
+    y=altura_total + 0.27,
+
+    text=(
+
+        f"Distribuição de "
+
+        f"<b>{total_formatado}</b> "
+
+        f"pedidos atrasados por dias de atraso"
+
+    ),
+
+    showarrow=False,
+
+    xanchor="center",
+
+    yanchor="middle",
+
+    font=dict(
+
+        size=13,
+
+        color="#6B7280"
+
+    )
+
+)
+
+
+# ============================================================
+# 21. RODAPÉ
+# ============================================================
+
+fig.add_annotation(
+
+    x=largura_total / 2,
+
+    y=-0.18,
+
+    text=(
+
+        "30+ representa todos os pedidos com "
+
+        "30 dias ou mais de atraso"
+
+    ),
+
+    showarrow=False,
+
+    xanchor="center",
+
+    yanchor="middle",
+
+    font=dict(
+
+        size=10,
+
+        color="#6B7280"
+
+    )
+
+)
+
+
+# ============================================================
+# 22. CONFIGURAÇÃO FINAL
+#
+# Redução das margens e da área vazia.
+# ============================================================
+
+fig.update_layout(
+
+    width=1400,
+
+    height=950,
+
+    paper_bgcolor="#FFFFFF",
+
+    plot_bgcolor="#FFFFFF",
+
+    margin=dict(
+
+        l=15,
+
+        r=15,
+
+        t=25,
+
+        b=25
+
+    ),
+
+    xaxis=dict(
+
+        visible=False,
+
+        range=[
+
+            -0.02,
+
+            largura_total + 0.02
+
+        ]
+
+    ),
+
+    yaxis=dict(
+
+        visible=False,
+
+        range=[
+
+            -0.28,
+
+            altura_total + 0.68
+
+        ],
+
+        scaleanchor="x",
+
+        scaleratio=1
+
+    ),
+
+    hovermode="closest"
+
+)
+
+
+# ============================================================
+# 23. EXIBIR
+# ============================================================
+
+fig.show(
+
+    config={
+
+        "displayModeBar": False
+
+    }
+
+)
+
+
+# ============================================================
+# 24. EXPORTAR PNG
+# ============================================================
+
+nome_saida = (
+
+    "calendario_atrasos.png"
+
+)
+
+
+fig.write_image(
+
+    nome_saida,
+
+    width=1400,
+
+    height=950,
+
+    scale=2
+
+)
+
+
+# ============================================================
+# 25. RESUMO
+# ============================================================
+
+print()
+
+print("=" * 60)
+
+print("RESUMO DOS ATRASOS")
+
+print("=" * 60)
+
+print()
+
+print(
+
+    f"Registros analisados: "
+
+    f"{len(df):,}".replace(",", ".")
+
+)
+
+print()
+
+print(
+
+    f"Pedidos atrasados: "
+
+    f"{total_atrasados:,}".replace(",", ".")
+
+)
+
+print()
+
+print(
+
+    f"Percentual de pedidos atrasados: "
+
+    f"{(total_atrasados / len(df) * 100):.2f}%"
+
+)
+
+print()
+
+print(
+
+    f"Maior atraso encontrado: "
+
+    f"{df['delay_days'].max()} dias"
+
+)
+
+print()
+
+print(
+
+    f"Faixa com maior concentração: "
+
+    f"{'30+' if maior_dia == 30 else f'{maior_dia:02d} dias'}"
+
+)
+
+print()
+
+print(
+
+    f"Participação da maior faixa: "
+
+    f"{percentuais[maior_dia]:.2f}%"
+
+)
+
+print()
+
+print("=" * 60)
+
+print("PNG EXPORTADO COM SUCESSO")
+
+print("=" * 60)
+
+print()
+
+print(f"Arquivo: {nome_saida}")
