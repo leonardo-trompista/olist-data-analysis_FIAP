@@ -1,0 +1,331 @@
+# ============================================================
+# 6. LOGÍSTICA E RETENÇÃO
+# PERFIL DE RECOMPRA DOS CLIENTES
+# GRÁFICO DE PIZZA — PLOTLY
+# ============================================================
+
+import pandas as pd
+import plotly.graph_objects as go
+
+# ============================================================
+# 1. CARREGAR OS ARQUIVOS
+# ============================================================
+
+orders = pd.read_csv(
+    "olist_orders_dataset.csv"
+)
+
+customers = pd.read_csv(
+    "olist_customers_dataset.csv"
+)
+
+print("=" * 60)
+print("BASES CARREGADAS")
+print("=" * 60)
+
+print(f"\nPedidos: {len(orders):,}")
+print(f"Clientes: {len(customers):,}")
+
+
+# ============================================================
+# 2. SELECIONAR AS COLUNAS NECESSÁRIAS
+# ============================================================
+
+orders_reduzida = orders[
+    [
+        "order_id",
+        "customer_id"
+    ]
+].copy()
+
+
+customers_reduzida = customers[
+    [
+        "customer_id",
+        "customer_unique_id"
+    ]
+].copy()
+
+
+# ============================================================
+# 3. FAZER O MERGE
+# ============================================================
+
+df_retencao = orders_reduzida.merge(
+
+    customers_reduzida,
+
+    on="customer_id",
+
+    how="left"
+
+)
+
+
+# ============================================================
+# 4. CONTAR PEDIDOS POR CLIENTE ÚNICO
+# ============================================================
+
+compras_cliente = (
+
+    df_retencao
+
+    .dropna(
+        subset=["customer_unique_id"]
+    )
+
+    .groupby(
+        "customer_unique_id"
+    )
+
+    .size()
+
+    .reset_index(
+        name="quantidade_compras"
+    )
+
+)
+
+
+# ============================================================
+# 5. CLASSIFICAR OS CLIENTES
+# ============================================================
+
+clientes_uma_compra = (
+
+    compras_cliente[
+        "quantidade_compras"
+    ]
+
+    .eq(1)
+
+    .sum()
+
+)
+
+
+clientes_recompra = (
+
+    compras_cliente[
+        "quantidade_compras"
+    ]
+
+    .ge(2)
+
+    .sum()
+
+)
+
+
+# ============================================================
+# 6. TOTAL E PERCENTUAIS
+# ============================================================
+
+total_clientes = (
+
+    clientes_uma_compra
+    + clientes_recompra
+
+)
+
+
+percentual_uma_compra = (
+
+    clientes_uma_compra
+    / total_clientes
+
+) * 100
+
+
+percentual_recompra = (
+
+    clientes_recompra
+    / total_clientes
+
+) * 100
+
+
+# ============================================================
+# 7. MOSTRAR OS RESULTADOS
+# ============================================================
+
+print("\n")
+print("=" * 60)
+print("PERFIL DE RECOMPRA")
+print("=" * 60)
+
+print(
+    f"\nClientes únicos: "
+    f"{total_clientes:,}"
+)
+
+print(
+    f"\nUma compra: "
+    f"{clientes_uma_compra:,} "
+    f"({percentual_uma_compra:.2f}%)"
+)
+
+print(
+    f"Recompra: "
+    f"{clientes_recompra:,} "
+    f"({percentual_recompra:.2f}%)"
+)
+
+
+# ============================================================
+# 8. GRÁFICO DE PIZZA
+# ============================================================
+
+fig = go.Figure(
+
+    data=[
+
+        go.Pie(
+
+    labels=[
+        "Uma compra",
+        "Recompra"
+    ],
+
+    values=[
+        clientes_uma_compra,
+        clientes_recompra
+    ],
+
+    marker=dict(
+
+        colors=[
+            "#0066FF",
+            "#FF00A8"
+        ],
+
+        line=dict(
+            color="white",
+            width=3
+        )
+
+    ),
+
+    texttemplate=(
+        "<b>%{value:,}</b><br>"
+        "%{percent:.1%}"
+    ),
+
+    textposition="inside",
+
+    textfont=dict(
+        size=16,
+        color="white"
+    ),
+
+    hovertemplate=(
+        "<b>%{label}</b><br>"
+        "Clientes: %{value:,}<br>"
+        "Participação: %{percent:.2%}"
+        "<extra></extra>"
+    ),
+
+    pull=[
+        0.02,
+        0.05
+    ]
+
+)
+
+    ]
+
+)
+
+
+# ============================================================
+
+
+# ============================================================
+# 10. CONFIGURAÇÃO VISUAL
+# ============================================================
+
+fig.update_layout(
+
+    title=dict(
+
+        text=(
+            "Perfil de Recompra dos Clientes"
+        ),
+
+        x=0.5,
+
+        xanchor="center",
+
+        font=dict(
+
+            size=24,
+
+            color="#222222"
+
+        )
+
+    ),
+
+    paper_bgcolor="white",
+
+    plot_bgcolor="white",
+
+    font=dict(
+
+        family="Arial",
+
+        color="#222222"
+
+    ),
+
+    height=650,
+
+    width=850,
+
+    margin=dict(
+
+        l=40,
+
+        r=40,
+
+        t=100,
+
+        b=40
+
+    ),
+
+    showlegend=True,
+
+    legend=dict(
+
+        orientation="h",
+
+        yanchor="bottom",
+
+        y=-0.05,
+
+        xanchor="center",
+
+        x=0.5,
+
+        font=dict(
+
+            size=14
+
+        )
+
+    )
+
+)
+
+
+# ============================================================
+# 11. EXIBIR
+# ============================================================
+
+fig.show(
+    config={
+        "displayModeBar": True,
+        "scrollZoom": True
+    }
+)
