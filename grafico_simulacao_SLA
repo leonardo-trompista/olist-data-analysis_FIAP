@@ -1,0 +1,418 @@
+# ============================================================
+# ANÁLISE DE EFICIÊNCIA LOGÍSTICA + SIMULAÇÃO DE SLA
+# OLIST
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from google.colab import files
+
+# ============================================================
+# 1. CARREGAR OS ARQUIVOS
+# ============================================================
+
+print("Selecione os dois arquivos da Olist:")
+uploaded = files.upload()
+
+# Identificar automaticamente os arquivos
+orders_file = [f for f in uploaded if "orders_dataset" in f.lower()][0]
+customers_file = [f for f in uploaded if "customers_dataset" in f.lower()][0]
+
+print("\nArquivos encontrados:")
+print("Pedidos:", orders_file)
+print("Clientes:", customers_file)
+
+
+# ============================================================
+# 2. CARREGAR DATASETS
+# ============================================================
+
+df_orders = pd.read_csv(orders_file)
+df_customers = pd.read_csv(customers_file)
+
+print("\nDimensões originais:")
+print("Orders:", df_orders.shape)
+print("Customers:", df_customers.shape)
+
+
+# ============================================================
+# 3. SELECIONAR COLUNAS NECESSÁRIAS
+# ============================================================
+
+df_orders = df_orders[
+    [
+        "order_id",
+        "customer_id",
+        "order_status",
+        "order_purchase_timestamp",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+    ]
+].copy()
+
+df_customers = df_customers[
+    [
+        "customer_id",
+        "customer_state"
+    ]
+].copy()
+
+
+# ============================================================
+# 4. CONVERTER DATAS
+# ============================================================
+
+colunas_data = [
+    "order_purchase_timestamp",
+    "order_delivered_customer_date",
+    "order_estimated_delivery_date"
+]
+
+for coluna in colunas_data:
+    df_orders[coluna] = pd.to_datetime(
+        df_orders[coluna],
+        errors="coerce"
+    )
+
+
+# ============================================================
+# 5. MANTER APENAS PEDIDOS ENTREGUES
+# ============================================================
+
+df_analise = df_orders[
+    df_orders["order_status"] == "delivered"
+].copy()
+
+print("\nPedidos entregues:", len(df_analise))
+
+
+# ============================================================
+# 6. REMOVER DUPLICIDADES
+# ============================================================
+
+df_analise = df_analise.drop_duplicates(
+    subset="order_id"
+).copy()
+
+print("Após remoção de duplicidades:", len(df_analise))
+
+
+# ============================================================
+# 7. REMOVER PEDIDOS SEM DATAS NECESSÁRIAS
+# ============================================================
+
+df_analise = df_analise.dropna(
+    subset=[
+        "order_purchase_timestamp",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date"
+    ]
+).copy()
+
+print("Após tratamento das datas:", len(df_analise))
+
+
+# ============================================================
+# 8. MERGE COM CLIENTES
+# ============================================================
+
+df_analise = df_analise.merge(
+    df_customers,
+    on="customer_id",
+    how="left"
+)
+
+print("Após merge com clientes:", len(df_analise))
+
+
+# ============================================================
+# 9. CALCULAR PRAZO REAL DE ENTREGA
+# ============================================================
+
+df_analise["delivery_days"] = (
+    df_analise["order_delivered_customer_date"]
+    - df_analise["order_purchase_timestamp"]
+).dt.total_seconds() / (24 * 60 * 60)
+
+
+# ============================================================
+# 10. CALCULAR PRAZO ESTIMADO
+# ============================================================
+
+df_analise["estimated_days"] = (
+    df_analise["order_estimated_delivery_date"]
+    - df_analise["order_purchase_timestamp"]
+).dt.total_seconds() / (24 * 60 * 60)
+
+
+# ============================================================
+# 11. CALCULAR ATRASO
+#
+# atraso positivo = entregou depois do prazo
+# atraso negativo = entregou antes do prazo
+# ============================================================
+
+df_analise["delay_days"] = (
+    df_analise["delivery_days"]
+    - df_analise["estimated_days"]
+)
+
+
+# ============================================================
+# 12. CLASSIFICAR CUMPRIMENTO DO SLA
+# ============================================================
+
+df_analise["is_delayed"] = (
+    df_analise["delay_days"] > 0
+)
+
+
+df_analise["sla_status"] = np.where(
+    df_analise["is_delayed"],
+    "Com atraso",
+    "No prazo"
+)
+
+
+# ============================================================
+# 13. ARREDONDAMENTOS
+# ============================================================
+
+df_analise["delivery_days"] = df_analise[
+    "delivery_days"
+].round(2)
+
+df_analise["estimated_days"] = df_analise[
+    "estimated_days"
+].round(2)
+
+df_analise["delay_days"] = df_analise[
+    "delay_days"
+].round(2)
+
+
+# ============================================================
+# 14. VERIFICAÇÃO FINAL
+# ============================================================
+
+print("\n" + "=" * 60)
+print("BASE ANALÍTICA")
+print("=" * 60)
+
+print(f"Total de pedidos analisados: {len(df_analise):,}")
+
+print("\nStatus SLA:")
+print(
+    df_analise["sla_status"]
+    .value_counts()
+)
+
+print("\nPercentuais:")
+print(
+    df_analise["sla_status"]
+    .value_counts(normalize=True)
+    .mul(100)
+    .round(2)
+)
+
+
+# ============================================================
+# 15. INDICADORES LOGÍSTICOS
+# ============================================================
+
+total_pedidos = len(df_analise)
+
+pedidos_no_prazo = (
+    df_analise["is_delayed"] == False
+).sum()
+
+pedidos_atrasados = (
+    df_analise["is_delayed"] == True
+).sum()
+
+pct_no_prazo = (
+    pedidos_no_prazo / total_pedidos * 100
+)
+
+pct_atrasados = (
+    pedidos_atrasados / total_pedidos * 100
+)
+
+media_entrega = df_analise[
+    "delivery_days"
+].mean()
+
+mediana_entrega = df_analise[
+    "delivery_days"
+].median()
+
+media_estimada = df_analise[
+    "estimated_days"
+].mean()
+
+media_atraso = df_analise[
+    "delay_days"
+].mean()
+
+
+print("\n" + "=" * 60)
+print("INDICADORES")
+print("=" * 60)
+
+print(f"Total de pedidos:       {total_pedidos:,}")
+print(f"No prazo:               {pedidos_no_prazo:,}")
+print(f"Com atraso:             {pedidos_atrasados:,}")
+print(f"% no prazo:             {pct_no_prazo:.2f}%")
+print(f"% com atraso:           {pct_atrasados:.2f}%")
+print(f"Média entrega:          {media_entrega:.2f} dias")
+print(f"Mediana entrega:        {mediana_entrega:.2f} dias")
+print(f"Média prazo estimado:   {media_estimada:.2f} dias")
+print(f"Média do atraso:        {media_atraso:.2f} dias")
+
+
+# ============================================================
+# 16. SIMULAÇÃO DE SLA
+#
+# Cenário:
+# reduzir progressivamente o prazo estimado.
+#
+# Exemplo:
+# SLA atual = prazo estimado original
+# SLA -1 = prazo estimado menos 1 dia
+# SLA -2 = prazo estimado menos 2 dias
+# ...
+#
+# O objetivo é observar quanto da operação continuaria
+# cumprindo o novo SLA.
+# ============================================================
+
+simulacao = []
+
+for reducao in range(0, 11):
+
+    novo_sla = (
+        df_analise["estimated_days"]
+        - reducao
+    )
+
+    cumpriu_sla = (
+        df_analise["delivery_days"]
+        <= novo_sla
+    )
+
+    percentual = (
+        cumpriu_sla.mean() * 100
+    )
+
+    quantidade = cumpriu_sla.sum()
+
+    simulacao.append({
+        "reducao_dias": reducao,
+        "novo_sla_medio": novo_sla.mean(),
+        "pedidos_no_sla": quantidade,
+        "percentual_no_sla": percentual
+    })
+
+
+df_sla = pd.DataFrame(simulacao)
+
+
+# ============================================================
+# 17. EXIBIR TABELA DA SIMULAÇÃO
+# ============================================================
+
+print("\n" + "=" * 60)
+print("SIMULAÇÃO DE SLA")
+print("=" * 60)
+
+display(
+    df_sla.style.format({
+        "novo_sla_medio": "{:.2f}",
+        "pedidos_no_sla": "{:,.0f}",
+        "percentual_no_sla": "{:.2f}%"
+    })
+)
+
+
+# ============================================================
+# 18. GRÁFICO DA SIMULAÇÃO DE SLA
+# ============================================================
+
+plt.figure(figsize=(12, 6))
+
+plt.plot(
+    df_sla["reducao_dias"],
+    df_sla["percentual_no_sla"],
+    marker="o",
+    linewidth=2
+)
+
+plt.title(
+    "Simulação de SLA — Impacto da Redução do Prazo Estimado",
+    fontsize=15,
+    fontweight="bold"
+)
+
+plt.xlabel(
+    "Redução do prazo estimado (dias)",
+    fontsize=11
+)
+
+plt.ylabel(
+    "Pedidos dentro do SLA (%)",
+    fontsize=11
+)
+
+plt.xticks(
+    range(0, 11)
+)
+
+plt.ylim(
+    max(0, df_sla["percentual_no_sla"].min() - 5),
+    100
+)
+
+plt.grid(
+    alpha=0.25
+)
+
+# Mostrar valores nos pontos
+for x, y in zip(
+    df_sla["reducao_dias"],
+    df_sla["percentual_no_sla"]
+):
+    plt.text(
+        x,
+        y + 0.8,
+        f"{y:.1f}%",
+        ha="center",
+        fontsize=9
+    )
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# 19. PREVIEW DO DF_ANALISE
+# ============================================================
+
+print("\n" + "=" * 60)
+print("DF_ANALISE — PRIMEIRAS LINHAS")
+print("=" * 60)
+
+display(
+    df_analise.head()
+)
+
+
+# ============================================================
+# 20. COLUNAS FINAIS
+# ============================================================
+
+print("\nColunas disponíveis em df_analise:")
+
+print(
+    df_analise.columns.tolist()
