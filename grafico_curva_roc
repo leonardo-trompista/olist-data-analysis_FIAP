@@ -1,0 +1,385 @@
+# ============================================================
+# CAPÍTULO 7 — MODELO PREDITIVO
+# REGRESSÃO LOGÍSTICA
+# ============================================================
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report,
+    roc_curve
+)
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+
+print("=" * 80)
+print("CAPÍTULO 7 — MODELO PREDITIVO")
+print("REGRESSÃO LOGÍSTICA")
+print("=" * 80)
+
+
+# ============================================================
+# 1. DEFINIR VARIÁVEIS
+# ============================================================
+
+X = df_modelo[
+    [
+        "delivery_days",
+        "estimated_days",
+        "delay_days",
+        "is_delayed"
+    ]
+].copy()
+
+y = df_modelo[
+    "baixa_satisfacao"
+].copy()
+
+
+# ============================================================
+# 2. DIVISÃO TREINO / TESTE
+# ============================================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.30,
+    random_state=42,
+    stratify=y
+)
+
+
+print("\nDivisão da base:")
+print("-" * 80)
+
+print(
+    f"Treinamento: {len(X_train):,} pedidos"
+)
+
+print(
+    f"Teste:       {len(X_test):,} pedidos"
+)
+
+
+# ============================================================
+# 3. PIPELINE
+#
+# Padronização + Regressão Logística
+# ============================================================
+
+modelo = Pipeline([
+    
+    (
+        "scaler",
+        StandardScaler()
+    ),
+    
+    (
+        "logistic",
+        LogisticRegression(
+            max_iter=1000,
+            random_state=42
+        )
+    )
+])
+
+
+# ============================================================
+# 4. TREINAMENTO
+# ============================================================
+
+modelo.fit(
+    X_train,
+    y_train
+)
+
+
+print("\nModelo treinado com sucesso.")
+
+
+# ============================================================
+# 5. PREVISÕES
+# ============================================================
+
+y_pred = modelo.predict(
+    X_test
+)
+
+y_prob = modelo.predict_proba(
+    X_test
+)[:, 1]
+
+
+# ============================================================
+# 6. MÉTRICAS
+# ============================================================
+
+accuracy = accuracy_score(
+    y_test,
+    y_pred
+)
+
+precision = precision_score(
+    y_test,
+    y_pred,
+    zero_division=0
+)
+
+recall = recall_score(
+    y_test,
+    y_pred,
+    zero_division=0
+)
+
+f1 = f1_score(
+    y_test,
+    y_pred,
+    zero_division=0
+)
+
+auc = roc_auc_score(
+    y_test,
+    y_prob
+)
+
+
+print("\n")
+print("=" * 80)
+print("AVALIAÇÃO DO MODELO")
+print("=" * 80)
+
+print(
+    f"Acurácia:   {accuracy:.4f} "
+    f"({accuracy*100:.2f}%)"
+)
+
+print(
+    f"Precisão:    {precision:.4f} "
+    f"({precision*100:.2f}%)"
+)
+
+print(
+    f"Recall:      {recall:.4f} "
+    f"({recall*100:.2f}%)"
+)
+
+print(
+    f"F1-score:    {f1:.4f}"
+)
+
+print(
+    f"ROC-AUC:     {auc:.4f}"
+)
+
+
+# ============================================================
+# 7. MATRIZ DE CONFUSÃO
+# ============================================================
+
+cm = confusion_matrix(
+    y_test,
+    y_pred
+)
+
+print("\n")
+print("=" * 80)
+print("MATRIZ DE CONFUSÃO")
+print("=" * 80)
+
+print(
+    pd.DataFrame(
+        cm,
+        index=[
+            "Real: não baixa",
+            "Real: baixa"
+        ],
+        columns=[
+            "Previsto: não baixa",
+            "Previsto: baixa"
+        ]
+    )
+)
+
+
+# ============================================================
+# 8. COEFICIENTES DO MODELO
+# ============================================================
+
+coeficientes = (
+    modelo
+    .named_steps["logistic"]
+    .coef_[0]
+)
+
+df_coef = pd.DataFrame({
+
+    "variavel": X.columns,
+
+    "coeficiente": coeficientes
+
+})
+
+df_coef["odds_ratio"] = (
+    np.exp(
+        df_coef["coeficiente"]
+    )
+)
+
+df_coef = df_coef.sort_values(
+    "coeficiente"
+)
+
+
+print("\n")
+print("=" * 80)
+print("COEFICIENTES DO MODELO")
+print("=" * 80)
+
+display(
+    df_coef.style.format({
+        "coeficiente": "{:.4f}",
+        "odds_ratio": "{:.4f}"
+    })
+)
+
+
+# ============================================================
+# 9. IMPORTÂNCIA RELATIVA
+# ============================================================
+
+df_importancia = df_coef.copy()
+
+df_importancia["impacto_absoluto"] = (
+    df_importancia["coeficiente"]
+    .abs()
+)
+
+df_importancia = (
+    df_importancia
+    .sort_values(
+        "impacto_absoluto",
+        ascending=False
+    )
+)
+
+
+print("\n")
+print("=" * 80)
+print("IMPORTÂNCIA RELATIVA DAS VARIÁVEIS")
+print("=" * 80)
+
+display(
+    df_importancia[
+        [
+            "variavel",
+            "coeficiente",
+            "odds_ratio"
+        ]
+    ].style.format({
+        "coeficiente": "{:.4f}",
+        "odds_ratio": "{:.4f}"
+    })
+)
+
+
+# ============================================================
+# 10. CURVA ROC
+# ============================================================
+
+fpr, tpr, thresholds = roc_curve(
+    y_test,
+    y_prob
+)
+
+
+plt.figure(figsize=(9, 7))
+
+plt.plot(
+    fpr,
+    tpr,
+    linewidth=2,
+    label=f"Modelo — AUC = {auc:.3f}"
+)
+
+plt.plot(
+    [0, 1],
+    [0, 1],
+    linestyle="--",
+    linewidth=1
+)
+
+plt.xlabel(
+    "Taxa de Falsos Positivos"
+)
+
+plt.ylabel(
+    "Taxa de Verdadeiros Positivos"
+)
+
+plt.title(
+    "Curva ROC — Modelo Preditivo de Baixa Satisfação",
+    fontsize=14,
+    fontweight="bold"
+)
+
+plt.legend()
+
+plt.grid(
+    alpha=0.25
+)
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# 11. RESUMO FINAL
+# ============================================================
+
+print("\n")
+print("=" * 80)
+print("RESUMO DO MODELO")
+print("=" * 80)
+
+print(
+    "Objetivo: prever baixa satisfação "
+    "(avaliação 1 ou 2 estrelas)"
+)
+
+print(
+    f"Base total: {len(df_modelo):,} pedidos"
+)
+
+print(
+    f"Treinamento: {len(X_train):,}"
+)
+
+print(
+    f"Teste: {len(X_test):,}"
+)
+
+print(
+    f"ROC-AUC: {auc:.4f}"
+)
+
+print(
+    "\nVariável com maior impacto absoluto:"
+)
+
+print(
+    f"→ {df_importancia.iloc[0]['variavel']}"
+)
+
+print("\nModelo concluído.")
