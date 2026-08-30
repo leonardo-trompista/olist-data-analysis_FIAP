@@ -1,0 +1,240 @@
+# Análise de Eficiência Logística + Simulação de SLA
+
+## Objetivo
+
+Esta etapa analisa o desempenho logístico dos pedidos da Olist e realiza uma **simulação de diferentes cenários de SLA**, avaliando o impacto da redução do prazo estimado sobre o percentual de pedidos que continuaria sendo entregue dentro do novo prazo.
+
+A análise busca transformar os indicadores históricos de entrega em uma visão orientada à decisão, permitindo avaliar possíveis níveis de exigência de prazo e seus impactos sobre o cumprimento operacional.
+
+---
+
+## Bases utilizadas
+
+São utilizados dois arquivos do dataset Olist:
+
+* `olist_orders_dataset.csv` — informações dos pedidos, status, datas de compra e entrega e prazo estimado.
+* `olist_customers_dataset.csv` — informações de identificação dos clientes e estado de origem.
+
+As bases são carregadas e integradas por meio da coluna `customer_id`.
+
+---
+
+## Preparação dos dados
+
+Inicialmente são selecionadas somente as colunas necessárias para a análise.
+
+As informações de data são convertidas para o formato `datetime`, permitindo realizar cálculos de diferença entre datas.
+
+Em seguida, são mantidos somente os pedidos com status:
+
+`delivered`
+
+Essa filtragem garante que o cálculo do prazo real de entrega seja realizado somente para pedidos efetivamente entregues.
+
+Também são removidas possíveis duplicidades utilizando `order_id` como identificador do pedido.
+
+Registros que não possuem as datas necessárias para os cálculos também são removidos.
+
+---
+
+## Cálculo do prazo real de entrega
+
+O prazo real é calculado pela diferença entre a data efetiva de entrega e a data da compra:
+
+**Prazo real = Data de entrega − Data da compra**
+
+O resultado é expresso em dias, podendo apresentar valores decimais quando a diferença entre as datas não corresponde exatamente a um número inteiro de dias.
+
+---
+
+## Cálculo do prazo estimado
+
+O prazo estimado representa a diferença entre a data prevista para entrega e a data da compra:
+
+**Prazo estimado = Data estimada de entrega − Data da compra**
+
+Esse indicador representa o prazo originalmente estabelecido para o pedido na base de dados.
+
+---
+
+## Cálculo dos dias de atraso
+
+O atraso é calculado pela diferença entre o prazo real e o prazo estimado:
+
+**Atraso = Prazo real − Prazo estimado**
+
+A interpretação é:
+
+* valor negativo → entrega realizada antes do prazo estimado;
+* valor igual a zero → entrega realizada no prazo;
+* valor positivo → entrega realizada após o prazo estimado.
+
+---
+
+## Classificação do cumprimento do SLA
+
+O código cria a variável `is_delayed`, utilizada para identificar pedidos entregues após o prazo estimado.
+
+A regra utilizada é:
+
+**`delay_days > 0` → Com atraso**
+
+**`delay_days <= 0` → No prazo**
+
+Também é criada a variável `sla_status`, que apresenta a classificação em formato textual:
+
+* `Com atraso`
+* `No prazo`
+
+---
+
+## Indicadores de eficiência logística
+
+A análise calcula os principais indicadores de desempenho da operação:
+
+* total de pedidos analisados;
+* quantidade de pedidos entregues no prazo;
+* quantidade de pedidos atrasados;
+* percentual de pedidos no prazo;
+* percentual de pedidos atrasados;
+* média do prazo real de entrega;
+* mediana do prazo real de entrega;
+* média do prazo estimado;
+* média da diferença entre prazo real e prazo estimado.
+
+A utilização simultânea da média e da mediana permite observar tanto o comportamento médio quanto o comportamento central dos tempos de entrega.
+
+---
+
+# Simulação de SLA
+
+## Objetivo da simulação
+
+A simulação avalia o que aconteceria caso o prazo estimado de entrega fosse reduzido progressivamente.
+
+O cenário de referência corresponde ao prazo estimado original da base.
+
+A partir dele, são simuladas reduções de:
+
+* 0 dias;
+* 1 dia;
+* 2 dias;
+* 3 dias;
+* ...
+* 10 dias.
+
+---
+
+## Metodologia da simulação
+
+Para cada cenário, o código reduz o prazo estimado original pelo número de dias definido:
+
+**Novo SLA = Prazo estimado − Redução**
+
+Em seguida, cada pedido é classificado como dentro ou fora do novo SLA.
+
+Um pedido é considerado cumpridor do novo SLA quando:
+
+**Prazo real de entrega ≤ Novo SLA**
+
+Para cada cenário são calculados:
+
+* redução aplicada ao prazo;
+* novo SLA médio;
+* quantidade de pedidos dentro do SLA;
+* percentual de pedidos dentro do SLA.
+
+---
+
+## Tabela da simulação
+
+Os resultados são armazenados no DataFrame `df_sla`.
+
+A tabela permite comparar os diferentes cenários de redução de prazo e observar como a exigência de um prazo mais curto afeta o percentual de pedidos que continuaria dentro do SLA.
+
+Essa estrutura permite avaliar o equilíbrio entre:
+
+**redução do prazo prometido × capacidade operacional de cumprimento.**
+
+---
+
+## Visualização
+
+A simulação é apresentada em um gráfico de linha.
+
+### Eixo X
+
+**Redução do prazo estimado (dias)**
+
+Representa o número de dias retirados do prazo originalmente estimado.
+
+### Eixo Y
+
+**Pedidos dentro do SLA (%)**
+
+Representa o percentual de pedidos que continuariam sendo entregues dentro do prazo definido em cada cenário.
+
+Os valores percentuais são apresentados diretamente sobre os pontos do gráfico para facilitar a interpretação.
+
+---
+
+## Interpretação
+
+A simulação permite identificar o impacto operacional de diferentes níveis de redução do prazo.
+
+À medida que o prazo estimado é reduzido, o critério para cumprimento do SLA se torna mais rigoroso. Consequentemente, espera-se uma redução no percentual de pedidos que permanecem dentro do SLA.
+
+A análise permite identificar cenários nos quais uma redução do prazo pode ser considerada operacionalmente mais viável e cenários nos quais a exigência de prazo pode provocar uma queda significativa no nível de cumprimento.
+
+---
+
+## Consideração metodológica
+
+O cenário de referência da simulação utiliza o **prazo estimado registrado na base Olist**. Portanto, a análise deve ser interpretada como uma simulação baseada nos prazos observados no dataset, e não como uma reprodução de um SLA corporativo oficial da Olist.
+
+A simulação também representa um exercício analítico de sensibilidade: ela mostra como o cumprimento histórico teria se comportado diante de diferentes níveis de exigência de prazo.
+
+---
+
+## Estrutura final da base analítica
+
+Ao final do processamento, o DataFrame `df_analise` contém as informações necessárias para as análises de eficiência logística e pode ser utilizado em etapas posteriores do projeto.
+
+Entre as principais variáveis calculadas estão:
+
+* `delivery_days`
+* `estimated_days`
+* `delay_days`
+* `is_delayed`
+* `sla_status`
+
+A visualização das primeiras linhas e das colunas disponíveis é realizada ao final do código como etapa de inspeção e validação da base.
+
+---
+
+## Reprodutibilidade
+
+O código realiza de forma automatizada:
+
+1. carregamento dos datasets;
+2. seleção das variáveis;
+3. conversão das datas;
+4. filtragem dos pedidos entregues;
+5. remoção de duplicidades;
+6. tratamento de dados ausentes;
+7. integração das bases;
+8. cálculo dos indicadores logísticos;
+9. classificação do cumprimento do SLA;
+10. simulação de redução de prazo;
+11. geração da tabela de cenários;
+12. geração do gráfico de simulação.
+
+Dessa forma, o processo pode ser reproduzido utilizando os mesmos arquivos de entrada e executando as etapas na mesma sequência.
+
+---
+
+## Aplicação no projeto
+
+Esta análise contribui para a dimensão de **eficiência logística** e para a construção de recomendações relacionadas ao SLA.
+
+Além de medir o desempenho histórico das entregas, a simulação permite avaliar quantitativamente as consequências de diferentes níveis de redução do prazo estimado, fornecendo uma base para decisões sobre **promessa de entrega, nível de serviço e capacidade operacional**.
