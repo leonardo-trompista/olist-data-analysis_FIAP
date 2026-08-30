@@ -1,0 +1,350 @@
+# @title
+# ============================================================
+# ANÁLISE DO IMPACTO MARGINAL DA REDUÇÃO DO SLA
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# ============================================================
+# 1. COPIAR A SIMULAÇÃO EXISTENTE
+# ============================================================
+
+df_impacto_sla = df_sla.copy()
+
+
+# ============================================================
+# 2. CALCULAR PEDIDOS FORA DO SLA
+# ============================================================
+
+df_impacto_sla["pedidos_fora_sla"] = (
+    total_pedidos
+    - df_impacto_sla["pedidos_no_sla"]
+)
+
+
+# ============================================================
+# 3. CALCULAR PERDA DE CUMPRIMENTO
+#
+# Quantos pontos percentuais são perdidos em relação
+# ao cenário imediatamente anterior.
+# ============================================================
+
+df_impacto_sla["perda_percentual"] = (
+    df_impacto_sla["percentual_no_sla"].shift(1)
+    - df_impacto_sla["percentual_no_sla"]
+)
+
+df_impacto_sla["perda_percentual"] = (
+    df_impacto_sla["perda_percentual"]
+    .fillna(0)
+)
+
+
+# ============================================================
+# 4. CALCULAR PEDIDOS ADICIONAIS FORA DO SLA
+#
+# Exemplo:
+# SLA 0 → 7.828 fora
+# SLA -1 → 9.286 fora
+#
+# Portanto:
+# 9.286 - 7.828 = 1.458 pedidos adicionais
+# ============================================================
+
+df_impacto_sla["pedidos_adicionais_fora_sla"] = (
+    df_impacto_sla["pedidos_fora_sla"]
+    .diff()
+    .fillna(0)
+)
+
+
+# ============================================================
+# 5. VARIAÇÃO TOTAL EM RELAÇÃO AO SLA ATUAL
+# ============================================================
+
+sla_base = df_impacto_sla.iloc[0]
+
+df_impacto_sla["perda_total_percentual"] = (
+    sla_base["percentual_no_sla"]
+    - df_impacto_sla["percentual_no_sla"]
+)
+
+
+df_impacto_sla["pedidos_adicionais_fora_total"] = (
+    df_impacto_sla["pedidos_fora_sla"]
+    - sla_base["pedidos_fora_sla"]
+)
+
+
+# ============================================================
+# 6. EXIBIR TABELA COMPLETA
+# ============================================================
+
+print("=" * 80)
+print("ANÁLISE DE IMPACTO DA REDUÇÃO DO SLA")
+print("=" * 80)
+
+display(
+    df_impacto_sla[
+        [
+            "reducao_dias",
+            "novo_sla_medio",
+            "pedidos_no_sla",
+            "percentual_no_sla",
+            "pedidos_fora_sla",
+            "pedidos_adicionais_fora_sla",
+            "perda_percentual",
+            "pedidos_adicionais_fora_total",
+            "perda_total_percentual"
+        ]
+    ].style.format({
+        "novo_sla_medio": "{:.2f}",
+        "pedidos_no_sla": "{:,.0f}",
+        "percentual_no_sla": "{:.2f}%",
+        "pedidos_fora_sla": "{:,.0f}",
+        "pedidos_adicionais_fora_sla": "{:,.0f}",
+        "perda_percentual": "{:.2f} p.p.",
+        "pedidos_adicionais_fora_total": "{:,.0f}",
+        "perda_total_percentual": "{:.2f} p.p."
+    })
+)
+
+
+# ============================================================
+# 7. IDENTIFICAR O MAIOR IMPACTO MARGINAL
+# ============================================================
+
+df_marginal = df_impacto_sla.iloc[1:].copy()
+
+indice_maior_perda = (
+    df_marginal["pedidos_adicionais_fora_sla"]
+    .idxmax()
+)
+
+maior_perda = df_impacto_sla.loc[
+    indice_maior_perda
+]
+
+
+print("\n" + "=" * 80)
+print("MAIOR IMPACTO MARGINAL")
+print("=" * 80)
+
+print(
+    f"Redução do SLA: "
+    f"{int(maior_perda['reducao_dias'])} dias"
+)
+
+print(
+    f"Pedidos adicionais fora do SLA: "
+    f"{maior_perda['pedidos_adicionais_fora_sla']:,.0f}"
+)
+
+print(
+    f"Perda de cumprimento: "
+    f"{maior_perda['perda_percentual']:.2f} pontos percentuais"
+)
+
+
+# ============================================================
+# 8. IDENTIFICAR UM POSSÍVEL PONTO DE EQUILÍBRIO
+#
+# Critério utilizado:
+# SLA que ainda mantém pelo menos 80% de cumprimento.
+# ============================================================
+
+limite_sla = 80
+
+df_acima_80 = df_impacto_sla[
+    df_impacto_sla["percentual_no_sla"] >= limite_sla
+]
+
+if len(df_acima_80) > 0:
+
+    melhor_cenario_80 = df_acima_80.iloc[-1]
+
+    print("\n" + "=" * 80)
+    print("PONTO DE REFERÊNCIA — 80% DE CUMPRIMENTO")
+    print("=" * 80)
+
+    print(
+        f"Redução máxima do SLA mantendo pelo menos "
+        f"{limite_sla}% de cumprimento: "
+        f"{int(melhor_cenario_80['reducao_dias'])} dias"
+    )
+
+    print(
+        f"Novo SLA médio: "
+        f"{melhor_cenario_80['novo_sla_medio']:.2f} dias"
+    )
+
+    print(
+        f"Cumprimento: "
+        f"{melhor_cenario_80['percentual_no_sla']:.2f}%"
+    )
+
+    print(
+        f"Pedidos fora do SLA: "
+        f"{melhor_cenario_80['pedidos_fora_sla']:,.0f}"
+    )
+
+
+# ============================================================
+# 9. GRÁFICO 1 — CUMPRIMENTO DO SLA
+# ============================================================
+
+plt.figure(figsize=(12, 6))
+
+plt.plot(
+    df_impacto_sla["novo_sla_medio"],
+    df_impacto_sla["percentual_no_sla"],
+    marker="o",
+    linewidth=2
+)
+
+plt.axhline(
+    80,
+    linestyle="--",
+    linewidth=1
+)
+
+plt.title(
+    "Impacto da Redução do Prazo no Cumprimento do SLA",
+    fontsize=15,
+    fontweight="bold"
+)
+
+plt.xlabel(
+    "Prazo médio prometido (dias)",
+    fontsize=11
+)
+
+plt.ylabel(
+    "Pedidos dentro do SLA (%)",
+    fontsize=11
+)
+
+plt.grid(
+    alpha=0.25
+)
+
+# Valores
+for x, y in zip(
+    df_impacto_sla["novo_sla_medio"],
+    df_impacto_sla["percentual_no_sla"]
+):
+    plt.annotate(
+        f"{y:.1f}%",
+        (x, y),
+        xytext=(0, 8),
+        textcoords="offset points",
+        ha="center",
+        fontsize=9
+    )
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# 10. GRÁFICO 2 — PEDIDOS ADICIONAIS FORA DO SLA
+# ============================================================
+
+plt.figure(figsize=(12, 6))
+
+plt.bar(
+    df_impacto_sla["reducao_dias"],
+    df_impacto_sla["pedidos_adicionais_fora_sla"]
+)
+
+plt.title(
+    "Pedidos Adicionais Fora do SLA a Cada Dia de Redução",
+    fontsize=15,
+    fontweight="bold"
+)
+
+plt.xlabel(
+    "Redução do SLA (dias)",
+    fontsize=11
+)
+
+plt.ylabel(
+    "Pedidos adicionais fora do SLA",
+    fontsize=11
+)
+
+plt.xticks(
+    range(0, 11)
+)
+
+plt.grid(
+    axis="y",
+    alpha=0.25
+)
+
+# Valores sobre as barras
+for x, y in zip(
+    df_impacto_sla["reducao_dias"],
+    df_impacto_sla["pedidos_adicionais_fora_sla"]
+):
+
+    if x == 0:
+        continue
+
+    plt.text(
+        x,
+        y + 50,
+        f"{y:,.0f}",
+        ha="center",
+        fontsize=9
+    )
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# 11. RESUMO EXECUTIVO
+# ============================================================
+
+print("\n" + "=" * 80)
+print("RESUMO EXECUTIVO DA SIMULAÇÃO")
+print("=" * 80)
+
+print(
+    f"SLA atual: "
+    f"{sla_base['novo_sla_medio']:.2f} dias"
+)
+
+print(
+    f"Cumprimento atual: "
+    f"{sla_base['percentual_no_sla']:.2f}%"
+)
+
+print(
+    f"Pedidos fora do SLA atualmente: "
+    f"{sla_base['pedidos_fora_sla']:,.0f}"
+)
+
+print()
+
+print(
+    f"SLA mais agressivo mantendo pelo menos "
+    f"{limite_sla}% de cumprimento: "
+    f"{melhor_cenario_80['novo_sla_medio']:.2f} dias"
+)
+
+print(
+    f"Cumprimento nesse cenário: "
+    f"{melhor_cenario_80['percentual_no_sla']:.2f}%"
+)
+
+print(
+    f"Pedidos adicionais fora do SLA: "
+    f"{melhor_cenario_80['pedidos_adicionais_fora_total']:,.0f}"
+)
