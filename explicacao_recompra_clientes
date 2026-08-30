@@ -1,0 +1,70 @@
+## 6. Logística e Retenção — Perfil de Recompra dos Clientes
+
+### Objetivo
+
+Esta etapa analisa o perfil de recompra dos clientes da Olist, identificando a proporção de clientes que realizaram **uma única compra** e daqueles que realizaram **duas ou mais compras**.
+
+O objetivo é utilizar a frequência de pedidos por cliente como um indicador de retenção, permitindo avaliar o comportamento de recorrência da base de consumidores.
+
+### Bases utilizadas
+
+A análise utiliza dois arquivos do dataset Olist:
+
+* `olist_orders_dataset.csv` — contém os pedidos e seus respectivos `customer_id`.
+* `olist_customers_dataset.csv` — relaciona o `customer_id` ao `customer_unique_id`.
+
+### Metodologia
+
+Primeiramente, são selecionadas apenas as colunas necessárias para a análise:
+
+* `order_id`
+* `customer_id`
+* `customer_unique_id`
+
+As bases de pedidos e clientes são então integradas por meio da coluna `customer_id`.
+
+Após o relacionamento, o `customer_unique_id` é utilizado para identificar cada cliente de forma única. Em seguida, é contabilizado o número de pedidos associados a cada cliente.
+
+Os clientes são classificados em duas categorias:
+
+* **Uma compra:** clientes associados a exatamente um pedido.
+* **Recompra:** clientes associados a dois ou mais pedidos.
+
+Essa classificação permite transformar a quantidade de pedidos realizados por cada cliente em um indicador simples de recorrência de compra.
+
+### Cálculo dos indicadores
+
+O percentual de cada grupo é calculado em relação ao total de clientes classificados:
+
+**Percentual de uma compra (%) = Clientes com uma compra ÷ Total de clientes × 100**
+
+**Percentual de recompra (%) = Clientes com recompra ÷ Total de clientes × 100**
+
+As duas categorias são mutuamente exclusivas e abrangem todos os clientes identificados na análise, de forma que seus percentuais totalizam 100%.
+
+### Visualização
+
+Os resultados são apresentados em um gráfico de pizza desenvolvido com **Plotly**.
+
+O gráfico apresenta:
+
+* quantidade de clientes em cada categoria;
+* percentual de participação;
+* legenda das categorias;
+* interação por meio de *hover* para consulta detalhada dos valores.
+
+A categoria **Recompra** recebe destaque visual por meio de uma pequena separação da fatia do gráfico, facilitando sua identificação.
+
+### Interpretação
+
+O indicador permite avaliar a composição da base de clientes segundo sua frequência de compra.
+
+Uma participação elevada de clientes classificados como **Recompra** indica maior recorrência de pedidos na base, enquanto uma concentração elevada de clientes com **uma única compra** indica menor recorrência.
+
+Esse indicador é utilizado como uma das métricas da dimensão de **retenção**, sendo posteriormente relacionado às demais análises do projeto sobre experiência do cliente e desempenho logístico.
+
+### Reprodutibilidade
+
+O código utiliza diretamente os arquivos originais do dataset Olist e executa as etapas de integração, contagem, classificação, cálculo dos percentuais e geração da visualização de forma automatizada.
+
+Dessa forma, a análise pode ser reproduzida a partir das mesmas bases de dados e do código disponibilizado neste projeto.
