@@ -1,0 +1,366 @@
+# Análise do Impacto Marginal da Redução do SLA
+
+## Objetivo
+
+Esta etapa complementa a **Simulação de SLA** realizada anteriormente, aprofundando a análise sobre o impacto da redução do prazo estimado de entrega.
+
+Enquanto a simulação de SLA avalia **qual percentual de pedidos continuaria dentro do prazo em diferentes cenários**, esta etapa calcula o **impacto marginal de cada redução adicional do prazo**.
+
+O objetivo é identificar:
+
+* quantos pedidos adicionais ficariam fora do SLA a cada dia de redução;
+* quantos pontos percentuais de cumprimento seriam perdidos;
+* qual cenário apresenta o maior impacto marginal;
+* qual seria a maior redução de prazo mantendo pelo menos 80% de cumprimento;
+* qual o impacto acumulado em relação ao cenário de referência.
+
+---
+
+# Dependência da análise anterior
+
+Este código **não é independente**.
+
+Ele deve ser executado **depois do código "Análise de Eficiência Logística + Simulação de SLA"**, pois utiliza objetos criados nessa etapa.
+
+O código anterior é responsável por:
+
+1. carregar os datasets da Olist;
+2. criar a base analítica `df_analise`;
+3. calcular `delivery_days`;
+4. calcular `estimated_days`;
+5. calcular `delay_days`;
+6. classificar o cumprimento do SLA;
+7. calcular os indicadores logísticos;
+8. criar a tabela `df_sla`;
+9. calcular `total_pedidos`;
+10. realizar a primeira simulação de redução do prazo.
+
+A estrutura de execução é:
+
+**Análise de Eficiência Logística + Simulação de SLA**
+
+↓
+
+`df_analise`
+
+↓
+
+`df_sla`
+
+↓
+
+`total_pedidos`
+
+↓
+
+**Análise do Impacto Marginal da Redução do SLA**
+
+↓
+
+`df_impacto_sla`
+
+↓
+
+**Gráfico 1 + Gráfico 2**
+
+Portanto, o código atual utiliza os resultados da simulação anterior como ponto de partida, sem precisar recalcular toda a base original.
+
+---
+
+# 1. Copiar a simulação existente
+
+O primeiro passo é criar uma cópia da tabela produzida pela simulação anterior:
+
+`df_impacto_sla = df_sla.copy()`
+
+O objetivo é preservar `df_sla` e criar uma nova tabela específica para a análise de impacto marginal.
+
+Dessa forma, as informações originais da simulação permanecem disponíveis, enquanto novas métricas podem ser adicionadas.
+
+---
+
+# 2. Calcular pedidos fora do SLA
+
+A variável `pedidos_fora_sla` é calculada pela diferença entre o total de pedidos analisados e a quantidade de pedidos que permaneceram dentro do SLA.
+
+A fórmula utilizada é:
+
+**Pedidos fora do SLA = Total de pedidos − Pedidos dentro do SLA**
+
+Essa informação permite observar não apenas o percentual de cumprimento, mas também a quantidade absoluta de pedidos que não atenderia ao prazo em cada cenário.
+
+---
+
+# 3. Calcular a perda de cumprimento
+
+A variável `perda_percentual` mede quantos **pontos percentuais de cumprimento são perdidos em relação ao cenário imediatamente anterior**.
+
+O cálculo utiliza:
+
+`shift(1)`
+
+para comparar cada cenário com o cenário anterior.
+
+Por exemplo:
+
+* cenário anterior: 90%;
+* cenário atual: 87%.
+
+A perda marginal será:
+
+**90% − 87% = 3 pontos percentuais**
+
+O primeiro cenário recebe valor zero porque não existe um cenário anterior para comparação.
+
+Essa métrica representa o **impacto marginal sobre o nível de serviço**.
+
+---
+
+# 4. Calcular pedidos adicionais fora do SLA
+
+A variável `pedidos_adicionais_fora_sla` mede quantos pedidos adicionais passam a ficar fora do SLA quando o prazo é reduzido em mais um dia.
+
+O cálculo utiliza a diferença entre os cenários consecutivos:
+
+`diff()`
+
+Por exemplo:
+
+* cenário 0: 7.828 pedidos fora do SLA;
+* cenário -1: 9.286 pedidos fora do SLA.
+
+Então:
+
+**9.286 − 7.828 = 1.458 pedidos adicionais**
+
+Essa métrica é particularmente importante para a tomada de decisão porque transforma a redução do prazo em impacto operacional absoluto.
+
+---
+
+# 5. Impacto acumulado em relação ao cenário de referência
+
+O código identifica o primeiro cenário como referência:
+
+`sla_base = df_impacto_sla.iloc[0]`
+
+Esse cenário corresponde à redução de zero dias, ou seja, ao prazo estimado original utilizado como referência na simulação.
+
+A partir dele são calculadas duas métricas acumuladas.
+
+### Perda total de cumprimento
+
+Compara o percentual de cumprimento de cada cenário com o cenário de referência.
+
+Exemplo:
+
+**Cumprimento de referência: 91,9%**
+
+**Cumprimento após redução: 82,5%**
+
+Perda acumulada:
+
+**91,9% − 82,5% = 9,4 pontos percentuais**
+
+### Pedidos adicionais fora do SLA
+
+Compara a quantidade de pedidos fora do SLA em cada cenário com a quantidade existente no cenário de referência.
+
+Isso permite identificar o impacto acumulado da redução do prazo.
+
+---
+
+# 6. Tabela completa da análise
+
+A tabela `df_impacto_sla` apresenta as principais informações da simulação e das métricas de impacto.
+
+Entre as colunas apresentadas estão:
+
+* `reducao_dias` — quantidade de dias retirados do prazo;
+* `novo_sla_medio` — novo prazo médio considerado;
+* `pedidos_no_sla` — quantidade de pedidos dentro do novo SLA;
+* `percentual_no_sla` — percentual de pedidos dentro do novo SLA;
+* `pedidos_fora_sla` — quantidade de pedidos fora do SLA;
+* `pedidos_adicionais_fora_sla` — aumento de pedidos fora do SLA em relação ao cenário anterior;
+* `perda_percentual` — perda de cumprimento em pontos percentuais em relação ao cenário anterior;
+* `pedidos_adicionais_fora_total` — aumento acumulado de pedidos fora do SLA em relação ao cenário de referência;
+* `perda_total_percentual` — perda acumulada de cumprimento em relação ao cenário de referência.
+
+Essa tabela permite analisar simultaneamente o impacto marginal e o impacto acumulado da redução do prazo.
+
+---
+
+# 7. Identificação do maior impacto marginal
+
+O código cria uma tabela auxiliar chamada `df_marginal`, excluindo o primeiro cenário:
+
+`df_impacto_sla.iloc[1:]`
+
+Isso é feito porque o cenário de redução zero não possui um cenário anterior para comparação.
+
+Em seguida, o código identifica o maior valor de:
+
+`pedidos_adicionais_fora_sla`
+
+utilizando `idxmax()`.
+
+O resultado mostra qual redução adicional de prazo provocou o maior aumento de pedidos fora do SLA.
+
+Também são apresentados:
+
+* número de dias de redução;
+* pedidos adicionais fora do SLA;
+* perda de cumprimento em pontos percentuais.
+
+---
+
+# 8. Identificação do ponto de referência de 80%
+
+O código estabelece:
+
+`limite_sla = 80`
+
+Esse valor representa um critério de referência para a análise.
+
+São selecionados os cenários que ainda apresentam pelo menos 80% de cumprimento:
+
+`percentual_no_sla >= 80`
+
+Entre esses cenários, o código identifica o último disponível na sequência de reduções.
+
+Assim, é possível encontrar:
+
+**a maior redução do prazo que ainda mantém pelo menos 80% de cumprimento.**
+
+Para esse cenário são apresentados:
+
+* redução aplicada;
+* novo prazo médio;
+* percentual de cumprimento;
+* quantidade de pedidos fora do SLA.
+
+O limite de 80% é um **critério analítico definido para a simulação**, e não uma afirmação de que 80% seja necessariamente o SLA oficial ou meta operacional da Olist.
+
+---
+
+# 9. Gráfico 1 — Cumprimento do SLA
+
+O primeiro gráfico apresenta a relação entre o novo prazo médio prometido e o percentual de pedidos dentro do SLA.
+
+### Eixo X
+
+**Prazo médio prometido (dias)**
+
+### Eixo Y
+
+**Pedidos dentro do SLA (%)**
+
+A linha horizontal de 80% representa o limite de referência utilizado na análise.
+
+Os valores percentuais são apresentados diretamente nos pontos do gráfico.
+
+Esse gráfico permite visualizar a relação entre:
+
+**redução do prazo prometido × perda de cumprimento.**
+
+A interpretação esperada é que prazos médios mais agressivos estejam associados a menor percentual de pedidos dentro do SLA.
+
+---
+
+# 10. Gráfico 2 — Pedidos adicionais fora do SLA
+
+O segundo gráfico utiliza barras para mostrar o impacto marginal de cada redução adicional do prazo.
+
+### Eixo X
+
+**Redução do SLA (dias)**
+
+### Eixo Y
+
+**Pedidos adicionais fora do SLA**
+
+Cada barra representa o aumento de pedidos que deixariam de cumprir o SLA em relação ao cenário imediatamente anterior.
+
+O cenário de redução zero não apresenta valor de impacto marginal e, por isso, não recebe um rótulo numérico sobre a barra.
+
+Esse gráfico permite identificar visualmente quais níveis de redução provocam maior impacto operacional.
+
+---
+
+# 11. Relação entre os dois gráficos
+
+Os dois gráficos possuem funções diferentes e complementares.
+
+### Gráfico 1
+
+Responde:
+
+> **Quanto o nível de cumprimento cai quando o prazo prometido é reduzido?**
+
+### Gráfico 2
+
+Responde:
+
+> **Quantos pedidos adicionais são afetados a cada dia de redução?**
+
+Assim, a análise deixa de observar somente o percentual de cumprimento e passa a mostrar também o impacto operacional em quantidade de pedidos.
+
+---
+
+# 12. Resumo executivo
+
+Ao final, o código apresenta um resumo contendo:
+
+* prazo médio do cenário de referência;
+* percentual de cumprimento atual;
+* quantidade de pedidos atualmente fora do SLA;
+* prazo médio do cenário mais agressivo que mantém pelo menos 80% de cumprimento;
+* percentual de cumprimento nesse cenário;
+* quantidade de pedidos adicionais fora do SLA nesse cenário.
+
+Essas informações permitem transformar os resultados estatísticos em uma conclusão voltada à tomada de decisão.
+
+---
+
+# Integração com a análise de SLA
+
+Esta etapa deve ser interpretada como uma **continuação da simulação de SLA**.
+
+A primeira análise responde:
+
+> **"O que acontece com o cumprimento quando reduzimos o prazo?"**
+
+A análise de impacto marginal acrescenta:
+
+> **"Qual é o custo operacional de cada redução adicional?"**
+
+A combinação das duas análises permite construir uma visão mais completa:
+
+**Prazo estimado original**
+
+→ **Redução do SLA**
+
+→ **Percentual de cumprimento**
+
+→ **Pedidos adicionais fora do SLA**
+
+→ **Perda marginal**
+
+→ **Impacto acumulado**
+
+→ **Ponto de referência para decisão**
+
+---
+
+# Aplicação no projeto
+
+A análise fornece suporte quantitativo para a etapa de recomendações do projeto Olist.
+
+Em vez de recomendar simplesmente uma redução do prazo de entrega, os resultados permitem avaliar o impacto potencial dessa decisão sobre o nível de serviço.
+
+Dessa forma, a simulação pode ser utilizada para discutir um possível equilíbrio entre:
+
+**experiência do cliente × agressividade da promessa de entrega × capacidade operacional.**
+
+Os resultados devem ser interpretados como uma **simulação baseada no histórico da base Olist**, e não como uma previsão causal ou garantia de comportamento futuro da operação.
+
+O cenário de referência utiliza o prazo estimado registrado na base de dados, enquanto o limite de 80% representa um critério analítico definido especificamente para esta simulação.
