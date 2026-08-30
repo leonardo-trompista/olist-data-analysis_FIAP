@@ -416,3 +416,4 @@ print("\nColunas disponíveis em df_analise:")
 
 print(
     df_analise.columns.tolist()
+)
