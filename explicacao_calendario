@@ -1,0 +1,70 @@
+## Calendário de Atrasos
+
+Este código realiza a análise da distribuição dos pedidos atrasados da base Olist, considerando a diferença entre a **data efetiva de entrega ao cliente** e a **data estimada de entrega**.
+
+### Objetivo
+
+O objetivo é identificar como os pedidos atrasados se distribuem de acordo com a quantidade de dias de atraso, permitindo visualizar se os atrasos estão concentrados em períodos curtos ou se existe uma parcela relevante de pedidos com atrasos prolongados.
+
+### Dados utilizados
+
+A análise utiliza as seguintes informações da base de pedidos:
+
+* `order_delivered_customer_date`: data em que o pedido foi efetivamente entregue ao cliente.
+* `order_estimated_delivery_date`: data estimada para a entrega do pedido.
+
+O código aceita arquivos nos formatos **CSV e Excel (XLSX/XLS)**.
+
+### Metodologia
+
+Primeiramente, as colunas de data são convertidas para o formato de data e os registros que não possuem as duas informações necessárias são removidos.
+
+O número de dias de atraso é calculado pela diferença entre a data real de entrega e a data estimada:
+
+**Dias de atraso = Data de entrega − Data estimada**
+
+São considerados atrasados somente os pedidos com resultado **maior que zero**, ou seja, aqueles entregues após a data estimada.
+
+Os pedidos atrasados são então agrupados em 30 faixas:
+
+* 01 dia de atraso;
+* 02 dias de atraso;
+* ...
+* 29 dias de atraso;
+* 30+ dias de atraso.
+
+A categoria **30+** reúne todos os pedidos entregues com 30 dias ou mais de atraso.
+
+### Indicador percentual
+
+O percentual apresentado em cada card representa a participação daquela faixa no **total de pedidos atrasados**, e não no total geral de pedidos.
+
+Assim, o cálculo é:
+
+**Participação da faixa (%) = Pedidos da faixa ÷ Total de pedidos atrasados × 100**
+
+Dessa forma, a soma das participações das 30 faixas corresponde a aproximadamente **100%**.
+
+### Visualização
+
+O resultado é apresentado em formato de calendário, organizado em **6 colunas e 5 linhas**.
+
+Cada card apresenta:
+
+* quantidade de pedidos;
+* percentual de participação entre os pedidos atrasados;
+* quantidade de dias de atraso.
+
+A intensidade da cor magenta varia de acordo com a concentração de pedidos em cada faixa. Quanto maior a participação da faixa, maior a intensidade da cor.
+
+A faixa com maior concentração de pedidos atrasados recebe ainda um **destaque na borda**, facilitando sua identificação.
+
+### Interatividade e exportação
+
+A visualização possui interação por meio de *tooltip*. Ao posicionar o cursor sobre um card, são apresentados os valores detalhados de quantidade de pedidos e participação percentual.
+
+Ao final, o gráfico também é exportado em formato **PNG**, permitindo sua utilização no relatório executivo e na apresentação do projeto.
+
+### Resultado esperado
+
+O calendário permite identificar rapidamente **onde está concentrada a maior parte dos atrasos**, contribuindo para a análise da eficiência logística e para a definição de estratégias relacionadas a **SLA, experiência do cliente e redução de atrasos prolongados**.
