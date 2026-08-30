@@ -1,0 +1,197 @@
+# Capítulo 7 — Modelo Preditivo
+
+## Regressão Logística para Baixa Satisfação
+
+### Objetivo
+
+Esta etapa desenvolve um modelo de **Regressão Logística** para avaliar a capacidade dos indicadores de desempenho logístico de identificar pedidos associados à **baixa satisfação dos clientes**.
+
+A variável de interesse (`baixa_satisfacao`) representa pedidos classificados com avaliação de **1 ou 2 estrelas**.
+
+O modelo busca verificar se informações relacionadas ao prazo e ao cumprimento da entrega apresentam capacidade de discriminar pedidos associados a avaliações baixas.
+
+---
+
+## Dados utilizados
+
+O modelo utiliza o DataFrame `df_modelo`, previamente preparado nas etapas anteriores da análise.
+
+São utilizadas como variáveis explicativas:
+
+* `delivery_days` — quantidade de dias entre a compra e a entrega efetiva;
+* `estimated_days` — quantidade de dias correspondente ao prazo estimado de entrega;
+* `delay_days` — diferença, em dias, entre a entrega efetiva e a data estimada;
+* `is_delayed` — indicador binário que identifica se o pedido foi entregue após o prazo estimado.
+
+A variável-alvo é:
+
+* `baixa_satisfacao` — indicador binário utilizado para representar pedidos associados a avaliações de 1 ou 2 estrelas.
+
+---
+
+## Preparação dos dados
+
+As variáveis explicativas são armazenadas em `X`, enquanto a variável-alvo é armazenada em `y`.
+
+O conjunto de dados é dividido em duas partes:
+
+* **70% para treinamento**;
+* **30% para teste**.
+
+A divisão utiliza `stratify=y`, preservando no conjunto de treinamento e no conjunto de teste uma proporção semelhante das classes de baixa e não baixa satisfação.
+
+O parâmetro `random_state=42` garante que a divisão possa ser reproduzida em novas execuções.
+
+---
+
+## Pipeline do modelo
+
+O modelo utiliza um `Pipeline` do Scikit-learn composto por duas etapas:
+
+1. **StandardScaler** — padroniza as variáveis numéricas;
+2. **LogisticRegression** — executa a regressão logística para classificação binária.
+
+A padronização é realizada dentro do próprio pipeline, evitando que o processo de transformação utilize informações do conjunto de teste durante o treinamento.
+
+---
+
+## Treinamento
+
+O modelo é treinado utilizando exclusivamente os dados do conjunto de treinamento.
+
+Após o treinamento, são realizadas duas formas de previsão sobre o conjunto de teste:
+
+* `predict()` — determina a classe prevista;
+* `predict_proba()` — calcula a probabilidade estimada de pertencimento à classe de baixa satisfação.
+
+As probabilidades são utilizadas posteriormente no cálculo da curva ROC e do indicador ROC-AUC.
+
+---
+
+## Avaliação do modelo
+
+O desempenho do modelo é avaliado por cinco métricas principais.
+
+### Acurácia
+
+Representa a proporção de classificações realizadas corretamente em relação ao total de observações do conjunto de teste.
+
+### Precisão
+
+Indica, entre os pedidos classificados pelo modelo como de baixa satisfação, qual proporção realmente pertence à classe de baixa satisfação.
+
+### Recall
+
+Indica, entre os pedidos que realmente pertencem à classe de baixa satisfação, qual proporção foi identificada corretamente pelo modelo.
+
+### F1-score
+
+Combina precisão e recall em uma única métrica, sendo útil para avaliar o equilíbrio entre essas duas dimensões.
+
+### ROC-AUC
+
+Avalia a capacidade do modelo de distinguir entre pedidos associados à baixa satisfação e pedidos não classificados nessa categoria em diferentes pontos de corte.
+
+Quanto maior o ROC-AUC, maior a capacidade discriminativa do modelo.
+
+---
+
+## Matriz de confusão
+
+O código também gera uma matriz de confusão, permitindo comparar as classes reais com as classes previstas pelo modelo.
+
+A matriz permite identificar:
+
+* verdadeiros negativos;
+* falsos positivos;
+* falsos negativos;
+* verdadeiros positivos.
+
+Essa análise complementa as métricas numéricas e permite observar quais tipos de erro o modelo está cometendo.
+
+---
+
+## Interpretação dos coeficientes
+
+Após o treinamento, os coeficientes da regressão logística são extraídos e organizados em uma tabela.
+
+Para cada variável são apresentados:
+
+* nome da variável;
+* coeficiente da regressão;
+* `odds_ratio`.
+
+O sinal do coeficiente indica a direção da associação com a classe de baixa satisfação:
+
+* **coeficiente positivo** — associado ao aumento das chances de baixa satisfação;
+* **coeficiente negativo** — associado à redução das chances de baixa satisfação.
+
+Como as variáveis são padronizadas antes da regressão, os coeficientes representam a relação das variáveis em uma escala padronizada.
+
+---
+
+## Odds Ratio
+
+O `odds_ratio` é calculado pela exponenciação do coeficiente:
+
+**Odds Ratio = e^(coeficiente)**
+
+De forma geral:
+
+* `Odds Ratio > 1` — aumento das chances da classe de baixa satisfação;
+* `Odds Ratio < 1` — redução das chances;
+* `Odds Ratio = 1` — ausência de associação no modelo.
+
+A interpretação deve ser realizada considerando as demais variáveis incluídas no modelo.
+
+---
+
+## Importância relativa das variáveis
+
+O código calcula o valor absoluto dos coeficientes para estabelecer uma ordenação da magnitude relativa das variáveis dentro do modelo.
+
+Essa análise permite identificar quais indicadores apresentam maior peso relativo na classificação realizada pela regressão logística.
+
+A importância relativa não deve ser interpretada como causalidade. Ela representa a contribuição relativa das variáveis dentro da estrutura específica do modelo utilizado.
+
+---
+
+## Curva ROC
+
+A curva ROC é construída a partir das probabilidades previstas pelo modelo.
+
+O gráfico relaciona:
+
+* **Taxa de Falsos Positivos**;
+* **Taxa de Verdadeiros Positivos**.
+
+Também é apresentada a linha de referência correspondente a um classificador sem capacidade discriminativa.
+
+O valor de ROC-AUC é apresentado na legenda do gráfico, permitindo avaliar visualmente e numericamente o desempenho discriminativo do modelo.
+
+---
+
+## Resultado final
+
+Ao final da execução, o código apresenta um resumo contendo:
+
+* objetivo do modelo;
+* quantidade total de pedidos utilizados;
+* quantidade de registros utilizados no treinamento;
+* quantidade de registros utilizados no teste;
+* valor de ROC-AUC;
+* variável com maior impacto absoluto segundo os coeficientes do modelo.
+
+---
+
+## Interpretação no contexto do projeto
+
+O modelo integra a dimensão de **satisfação do cliente** à análise de **eficiência logística**.
+
+Sua finalidade é verificar se indicadores relacionados ao desempenho das entregas possuem capacidade de discriminar pedidos associados à baixa satisfação.
+
+Os resultados devem ser interpretados como **associações identificadas pelo modelo**, e não como demonstração de causalidade.
+
+Além disso, algumas variáveis utilizadas possuem relações matemáticas entre si — especialmente `delay_days` e `is_delayed` em relação aos demais indicadores de entrega. Por isso, os coeficientes devem ser interpretados considerando o conjunto de variáveis utilizado no modelo.
+
+A análise contribui para a construção de evidências quantitativas sobre a relação entre desempenho logístico e experiência do cliente, servindo de suporte às recomendações apresentadas nas etapas posteriores do projeto.
